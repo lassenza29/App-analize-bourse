@@ -6,6 +6,9 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from datetime import datetime
 import math
+import feedparser
+import requests
+from bs4 import BeautifulSoup
 
 # ==============================================================================
 # 0. CONFIGURATION DE LA PAGE & DESIGN UI/UX (CSS PERSONNALISÉ)
@@ -128,6 +131,48 @@ def calculer_rsi(data, window=14):
     loss = (-delta.where(delta < 0, 0)).rolling(window=window).mean()
     rs = gain / loss
     return 100 - (100 / (1 + rs))
+
+@st.cache_data(ttl=1800)
+def get_news_from_zonebourse_rss():
+    """Récupère les actualités Zone Bourse via flux RSS"""
+    try:
+        rss_url = "https://www.zonebourse.com/rss/news.xml"
+        feed = feedparser.parse(rss_url)
+        
+        news_list = []
+        for entry in feed.entries[:15]:  # Récupère jusqu'à 15 articles
+            try:
+                title = entry.get('title', '').strip()
+                link = entry.get('link', '').strip()
+                published = entry.get('published', 'Date non disponible')
+                
+                # Parse la date pour un format plus lisible
+                if published and published != 'Date non disponible':
+                    try:
+                        dt_obj = datetime.strptime(published[:19], '%Y-%m-%dT%H:%M:%S')
+                        published = dt_obj.strftime('%d/%m/%Y %H:%M')
+                    except:
+                        pass
+                
+                if title and link:
+                    news_list.append({
+                        'title': title,
+                        'link': link,
+                        'published': published,
+                        'publisher': 'Zone Bourse'
+                    })
+            except:
+                continue
+        
+        return news_list if news_list else None
+    except Exception as e:
+        print(f"Erreur RSS Zone Bourse: {e}")
+        return None
+
+def get_zonebourse_direct_link(ticker):
+    """Retourne un lien direct vers Zone Bourse pour un titre"""
+    ticker_clean = ticker.replace('.PA', '').replace('.AS', '').upper()
+    return f"https://www.zonebourse.com/recherche/?q={ticker_clean}"
 
 def extract_stock_data(info, fx_rate):
     """Extraction et calcul des 21 ratios pour les actions."""
@@ -427,51 +472,33 @@ if mode == "🔍 Analyse Individuelle":
                             st.error("Données historiques insuffisantes pour effectuer la simulation sur cette période.")
 
                 # ---------------------------------------------------------
-                # ONGLET 4 : ACTUALITÉS FIABLES
+                # ONGLET 4 : ACTUALITÉS ZONE BOURSE
                 # ---------------------------------------------------------
                 with tabs[3]:
-                    st.subheader("Flux d'Actualités (Yahoo Finance API)")
-                    news = ticker.news
-                    if news and len(news) > 0:
-                        news_count = 0
-                        for n in news:
-                            # Validation stricte des données
-                            if not isinstance(n, dict):
-                                continue
-                            
-                            title = n.get('title', '').strip()
-                            publisher = n.get('publisher', '').strip()
-                            link = n.get('link', '').strip()
-                            timestamp = n.get('providerPublishTime')
-                            
-                            # Filtrer les articles invalides
-                            if not title or not publisher or not link:
-                                continue
-                            
-                            # Formater la date correctement
-                            if timestamp and isinstance(timestamp, (int, float)) and timestamp > 0:
-                                try:
-                                    dt = datetime.fromtimestamp(timestamp).strftime('%d/%m/%Y %H:%M')
-                                except (ValueError, OSError):
-                                    dt = 'Date non disponible'
-                            else:
-                                dt = 'Date non disponible'
-                            
+                    st.subheader("📰 Actualités Boursières (Zone Bourse)")
+                    
+                    # Récupère les actualités
+                    news_list = get_news_from_zonebourse_rss()
+                    
+                    if news_list and len(news_list) > 0:
+                        st.info("✅ Actualités en direct depuis Zone Bourse (RSS)")
+                        
+                        for i, news in enumerate(news_list[:10]):  # Affiche max 10
                             st.markdown(f"""
                             <div style="background-color:#161b22; padding:15px; border-radius:6px; margin-bottom:12px; border-left: 4px solid #58a6ff; border-top: 1px solid #30363d; border-right: 1px solid #30363d;">
-                                <a href="{link}" target="_blank" style="color:#58a6ff; font-weight:600; text-decoration:none; font-size:1.1rem;">{title}</a><br>
-                                <small style="color:#8b949e; margin-top:5px; display:inline-block;">📰 {publisher} &nbsp;|&nbsp; 🕒 {dt}</small>
+                                <a href="{news['link']}" target="_blank" style="color:#58a6ff; font-weight:600; text-decoration:none; font-size:1.1rem;">{news['title']}</a><br>
+                                <small style="color:#8b949e; margin-top:5px; display:inline-block;">📰 {news['publisher']} &nbsp;|&nbsp; 🕒 {news['published']}</small>
                             </div>
                             """, unsafe_allow_html=True)
-                            
-                            news_count += 1
-                            if news_count >= 10:  # Limite aux 10 articles les plus récents
-                                break
-                        
-                        if news_count == 0:
-                            st.info("⚠️ Aucune actualité valide trouvée pour cet actif.")
                     else:
-                        st.info("📰 Aucune actualité récente n'a été trouvée pour cet actif. L'API peut être momentanément indisponible.")
+                        st.warning("⚠️ Impossible de charger le flux RSS Zone Bourse.")
+                        st.info(f"""
+                        **📌 Consultation directe :**
+                        
+                        [🔗 Voir les actualités pour **{ticker_input}** sur Zone Bourse]({get_zonebourse_direct_link(ticker_input)})
+                        
+                        Zone Bourse propose les actualités les plus récentes et les analyses spécifiques par titre.
+                        """)
 
             except Exception as e:
                 st.error(f"Erreur d'exécution isolée lors du traitement de {ticker_input} : {str(e)}")
