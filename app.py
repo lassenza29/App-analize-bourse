@@ -169,6 +169,73 @@ def get_news_from_zonebourse_rss():
         print(f"Erreur RSS Zone Bourse: {e}")
         return None
 
+@st.cache_data(ttl=1800)
+def get_news_from_zonebourse_scrape(ticker):
+    """Alternative : web scraping direct Zone Bourse pour récupérer les actualités"""
+    try:
+        ticker_clean = ticker.replace('.PA', '').replace('.AS', '').upper()
+        url = f"https://www.zonebourse.com/{ticker_clean}/actualites/"
+        
+        # Headers pour éviter les blocages
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        
+        response = requests.get(url, timeout=5, headers=headers)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        news_list = []
+        
+        # Recherche les articles dans différentes structures possibles
+        # Strategy 1: Articles avec classe 'news-item' ou similaire
+        articles = soup.find_all('article', limit=10)
+        if not articles:
+            # Strategy 2: Chercher les liens dans les div de contenu
+            articles = soup.find_all('div', class_=lambda x: x and ('news' in x.lower() or 'article' in x.lower()), limit=10)
+        if not articles:
+            # Strategy 3: Chercher tous les liens pertinents
+            articles = soup.find_all('a', href=lambda x: x and '/actualite/' in x.lower(), limit=10)
+        
+        for article in articles:
+            try:
+                # Extraire le titre et le lien
+                if isinstance(article, str):
+                    continue
+                    
+                # Chercher le titre
+                title_elem = article.find('h3') or article.find('h2') or article.find('a')
+                if not title_elem:
+                    title_elem = article
+                    
+                title = title_elem.get_text(strip=True) if title_elem else None
+                
+                # Chercher le lien
+                link_elem = article.find('a', href=True)
+                if not link_elem and hasattr(article, 'get'):
+                    link_elem = article
+                    
+                link = link_elem.get('href', '') if link_elem and hasattr(link_elem, 'get') else None
+                
+                # Formater le lien en URL complète
+                if link and not link.startswith('http'):
+                    link = f"https://www.zonebourse.com{link}"
+                
+                if title and link and title.strip():
+                    news_list.append({
+                        'title': title.strip(),
+                        'link': link,
+                        'published': 'Récemment',
+                        'publisher': 'Zone Bourse (Scraping)'
+                    })
+            except Exception as e:
+                continue
+        
+        return news_list if news_list else None
+    except Exception as e:
+        print(f"Erreur scraping Zone Bourse: {e}")
+        return None
+
 def get_zonebourse_direct_link(ticker):
     """Retourne un lien direct vers Zone Bourse pour un titre"""
     ticker_clean = ticker.replace('.PA', '').replace('.AS', '').upper()
@@ -480,18 +547,22 @@ if mode == "🔍 Analyse Individuelle":
                     # Récupère les actualités
                     news_list = get_news_from_zonebourse_rss()
                     
+                    # Si RSS échoue, essaie le web scraping
+                    if not news_list:
+                        news_list = get_news_from_zonebourse_scrape(ticker_input)
+                    
                     if news_list and len(news_list) > 0:
-                        st.info("✅ Actualités en direct depuis Zone Bourse (RSS)")
+                        st.info("✅ Actualités en direct depuis Zone Bourse")
                         
                         for i, news in enumerate(news_list[:10]):  # Affiche max 10
                             st.markdown(f"""
-                            <div style="background-color:#161b22; padding:15px; border-radius:6px; margin-bottom:12px; border-left: 4px solid #58a6ff; border-top: 1px solid #30363d; border-right: 1px solid #30363d;">
+                            <div style="background-color:#161b22; padding:15px; border-radius:6px; margin-bottom:12px; border-left: 4px solid #58a6ff; border-top: 1px solid #30363d; border-right: 1px solid #30363d; border-bottom: 1px solid #30363d;">
                                 <a href="{news['link']}" target="_blank" style="color:#58a6ff; font-weight:600; text-decoration:none; font-size:1.1rem;">{news['title']}</a><br>
                                 <small style="color:#8b949e; margin-top:5px; display:inline-block;">📰 {news['publisher']} &nbsp;|&nbsp; 🕒 {news['published']}</small>
                             </div>
                             """, unsafe_allow_html=True)
                     else:
-                        st.warning("⚠️ Impossible de charger le flux RSS Zone Bourse.")
+                        st.warning("⚠️ Impossible de charger les actualités Zone Bourse.")
                         st.info(f"""
                         **📌 Consultation directe :**
                         
@@ -509,7 +580,7 @@ if mode == "🔍 Analyse Individuelle":
 # ==============================================================================
 elif mode == "⚖️ Comparateur Multi-Actifs":
     st.title("Comparateur Quantitatif (Matrice Multi-Actifs)")
-    st.write("Saisissez une liste de tickers (actions ou ETF) séparés par des virgules. Le tableau généré sera trié automatiquement par le Score Fondamental pour faire ressortir les meilleures opportunités.")
+    st.write("Saisissez une liste de tickers (actions ou ETF) séparés par des virgules. Le tableau généré sera trié automatiquement par le Score Fondamental pour faire ressortir les meilleurs candidats.")
     
     tickers_input = st.text_input("Tickers (ex: AAPL, MSFT, LVMH.PA, ASML.AS, CW8.PA)", "AAPL, MSFT, NVDA, LVMH.PA, JNJ")
     
