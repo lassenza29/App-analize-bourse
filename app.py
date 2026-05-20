@@ -420,7 +420,7 @@ if mode == "🔍 Analyse Individuelle":
                             # Graphique Plotly de la simulation
                             fig_dca = go.Figure()
                             fig_dca.add_trace(go.Scatter(x=df_dca.index, y=df_dca['Capital Investi'], mode='lines', name="Capital Sorti (€)", line=dict(color="#8b949e", width=2, dash='dash')))
-                            fig_dca.add_trace(go.Scatter(x=df_dca.index, y=df_dca['Valeur Réelle'], mode='lines', fill='tozeroy', name="Valeur du Portefeuille (€)", line=dict(color="#3fb950", width=3), fillcolor="rgba(63, 185, 80, 0.15)"))
+                            fig_dca.add_trace(go.Scatter(x=df_dca.index, y=df_dca['Valeur Réelle'], mode='lines', fill='tozeroy', name="Valeur du Portefeuille (€)", line=dict(color="#3fb950", width=2)))
                             fig_dca.update_layout(height=450, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', hovermode="x unified")
                             st.plotly_chart(fig_dca, use_container_width=True)
                         else:
@@ -432,21 +432,46 @@ if mode == "🔍 Analyse Individuelle":
                 with tabs[3]:
                     st.subheader("Flux d'Actualités (Yahoo Finance API)")
                     news = ticker.news
-                    if news:
-                        for n in news[:10]: # Limite aux 10 articles les plus récents
-                            dt = datetime.fromtimestamp(n.get('providerPublishTime', 0)).strftime('%d/%m/%Y %H:%M')
-                            title = n.get('title', 'Titre non disponible')
-                            publisher = n.get('publisher', 'Source inconnue')
-                            link = n.get('link', '#')
+                    if news and len(news) > 0:
+                        news_count = 0
+                        for n in news:
+                            # Validation stricte des données
+                            if not isinstance(n, dict):
+                                continue
+                            
+                            title = n.get('title', '').strip()
+                            publisher = n.get('publisher', '').strip()
+                            link = n.get('link', '').strip()
+                            timestamp = n.get('providerPublishTime')
+                            
+                            # Filtrer les articles invalides
+                            if not title or not publisher or not link:
+                                continue
+                            
+                            # Formater la date correctement
+                            if timestamp and isinstance(timestamp, (int, float)) and timestamp > 0:
+                                try:
+                                    dt = datetime.fromtimestamp(timestamp).strftime('%d/%m/%Y %H:%M')
+                                except (ValueError, OSError):
+                                    dt = 'Date non disponible'
+                            else:
+                                dt = 'Date non disponible'
                             
                             st.markdown(f"""
-                            <div style="background-color:#161b22; padding:15px; border-radius:6px; margin-bottom:12px; border-left: 4px solid #58a6ff; border-top: 1px solid #30363d; border-right: 1px solid #30363d; border-bottom: 1px solid #30363d;">
+                            <div style="background-color:#161b22; padding:15px; border-radius:6px; margin-bottom:12px; border-left: 4px solid #58a6ff; border-top: 1px solid #30363d; border-right: 1px solid #30363d;">
                                 <a href="{link}" target="_blank" style="color:#58a6ff; font-weight:600; text-decoration:none; font-size:1.1rem;">{title}</a><br>
                                 <small style="color:#8b949e; margin-top:5px; display:inline-block;">📰 {publisher} &nbsp;|&nbsp; 🕒 {dt}</small>
                             </div>
                             """, unsafe_allow_html=True)
+                            
+                            news_count += 1
+                            if news_count >= 10:  # Limite aux 10 articles les plus récents
+                                break
+                        
+                        if news_count == 0:
+                            st.info("⚠️ Aucune actualité valide trouvée pour cet actif.")
                     else:
-                        st.info("Aucune actualité récente n'a été trouvée pour cet actif. L'API peut être momentanément indisponible.")
+                        st.info("📰 Aucune actualité récente n'a été trouvée pour cet actif. L'API peut être momentanément indisponible.")
 
             except Exception as e:
                 st.error(f"Erreur d'exécution isolée lors du traitement de {ticker_input} : {str(e)}")
