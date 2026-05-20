@@ -4,11 +4,9 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from datetime import datetime
 import math
 import feedparser
-import requests
-from bs4 import BeautifulSoup
+import urllib.parse
 
 # ==============================================================================
 # CONFIGURATION DE LA PAGE & DESIGN UI/UX INSTITUTIONNEL
@@ -44,7 +42,7 @@ st.markdown("""
     .stTabs [data-baseweb="tab-list"] { gap: 8px; }
     .stTabs [data-baseweb="tab"] { background-color: #161b22; border: 1px solid #30363d; border-radius: 6px 6px 0 0; padding: 10px 20px; }
     .stTabs [aria-selected="true"] { background-color: #21262d; border-bottom-color: transparent; }
-    .expert-verdict { border-left: 4px solid #58a6ff; padding-left: 15px; background-color: #161b22; padding: 15px; border-radius: 0 8px 8px 0; }
+    .expert-verdict { border-left: 4px solid #58a6ff; padding-left: 15px; background-color: #161b22; padding: 15px; border-radius: 0 8px 8px 0; margin-bottom: 20px; }
     .buy-verdict { border-left-color: #3fb950; }
     .hold-verdict { border-left-color: #d29922; }
     .sell-verdict { border-left-color: #f85149; }
@@ -73,7 +71,7 @@ def get_fx_rate(currency_code):
         if not data.empty:
             rate = float(data['Close'].iloc[-1])
             return (rate * 0.01) if is_pence else rate
-    except:
+    except Exception:
         pass
     rate = fallbacks.get(curr, 1.0)
     return (rate * 0.01) if is_pence else rate
@@ -81,7 +79,7 @@ def get_fx_rate(currency_code):
 def safe_float(val, multiplier=1.0, precision=2):
     if val is None or pd.isna(val) or val == "": return None
     try: return round(float(val) * multiplier, precision)
-    except: return None
+    except Exception: return None
 
 def safe_str(val):
     if val is None or pd.isna(val) or val == "": return "N/A"
@@ -180,26 +178,44 @@ def extract_etf_data(info, ticker_symbol, fx_rate):
 
 
 # ==============================================================================
-# MOTEUR D'ACTUALITÉS (MORNINGSTAR EXCLUSIF)
+# MOTEUR D'ACTUALITÉS (CONTOURNEMENT ANTI-BOTS VIA GOOGLE NEWS RSS)
 # ==============================================================================
 @st.cache_data(ttl=1800)
 def get_morningstar_news(ticker_symbol, company_name):
+    news = []
     try:
-        url = f"https://www.morningstar.fr/fr/news/search.aspx?q={ticker_symbol.split('.')[0]}"
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-        res = requests.get(url, headers=headers, timeout=5)
-        soup = BeautifulSoup(res.text, 'html.parser')
-        links = soup.find_all('a', href=lambda x: x and '/news/' in x.lower())
-        news = []
-        for l in links[:6]:
-            title = l.get_text(strip=True)
-            if len(title) > 15:
-                href = l.get('href')
-                if not href.startswith('http'): href = f"https://www.morningstar.fr{href}"
-                news.append({'title': title, 'link': href, 'publisher': 'Morningstar', 'published': 'Date récente'})
-        return news
-    except:
-        return []
+        clean_ticker = ticker_symbol.split('.')[0]
+        query = f'"{clean_ticker}" (site:morningstar.fr OR site:morningstar.com)'
+        encoded_query = urllib.parse.quote(query)
+        rss_url = f"https://news.google.com/rss/search?q={encoded_query}&hl=fr&gl=FR&ceid=FR:fr"
+        
+        feed = feedparser.parse(rss_url)
+        
+        for entry in feed.entries[:6]:
+            title = entry.title.rsplit(' - ', 1)[0] if ' - ' in entry.title else entry.title
+            news.append({
+                'title': title,
+                'link': entry.link,
+                'publisher': 'Morningstar',
+                'published': entry.published[5:16] if hasattr(entry, 'published') else 'Récemment'
+            })
+    except Exception:
+        pass
+
+    if not news:
+        try:
+            tk_news = yf.Ticker(ticker_symbol).news
+            for n in tk_news[:6]:
+                news.append({
+                    'title': n.get('title', 'Actualité financière'),
+                    'link': n.get('link', '#'),
+                    'publisher': n.get('publisher', 'Yahoo Finance'),
+                    'published': 'Récemment'
+                })
+        except Exception:
+            pass
+            
+    return news
 
 def generate_consensus_and_verdict(data, is_etf, nom):
     if is_etf:
@@ -236,11 +252,11 @@ if mode == "🔍 Terminal Quantitatif":
     ticker_input = st.text_input("Recherche", placeholder="Saisir un Ticker (ex: AAPL, LVMH.PA, CW8.PA)", label_visibility="collapsed").upper().strip()
     
     if ticker_input:
-        with st.spinner("Acquisition et validation des données (Yahoo / Morningstar / Zonebourse)..."):
+        with st.spinner("Acquisition et validation des données (Yahoo / Consensus / Flux RSS)..."):
             try:
                 tk = yf.Ticker(ticker_input)
                 info = tk.info
-                if not info or ('symbol' not in info and 'regularMarketPrice' not in info):
+                if not info or ('symbol' not in info and 'regularMarketPrice' not in info and 'currentPrice' not in info):
                     st.error("Donnée non validée. Ticker introuvable.")
                     st.stop()
                     
@@ -251,7 +267,7 @@ if mode == "🔍 Terminal Quantitatif":
                 
                 st.markdown(f"## {nom} <span style='color:#8b949e; font-size:1.2rem;'>({ticker_input})</span>", unsafe_allow_html=True)
                 
-                tabs = st.tabs(["📊 Données Fondamentales", "📈 Technique & Graphiques", "⚙️ Modélisation DCA", "📰 Consensus & Presse (Morningstar)"])
+                tabs = st.tabs(["📊 Données Fondamentales", "📈 Technique & Graphiques", "⚙️ Modélisation DCA", "📰 Consensus & Presse"])
                 
                 with tabs[0]:
                     if is_etf:
@@ -323,7 +339,7 @@ if mode == "🔍 Terminal Quantitatif":
 
                         fig.update_layout(height=600, template="plotly_dark", margin=dict(l=0, r=0, t=30, b=0))
                         st.plotly_chart(fig, use_container_width=True)
-                    else: st.warning("Historique insuffisant.")
+                    else: st.warning("Historique insuffisant pour l'analyse technique.")
 
                 with tabs[2]:
                     dc1, dc2 = st.columns(2)
@@ -366,16 +382,16 @@ if mode == "🔍 Terminal Quantitatif":
                     if news:
                         for n in news:
                             st.markdown(f"""
-                            <div style="background:#161b22; padding:10px; border-left:3px solid #d29922; margin-bottom:10px;">
-                                <a href="{n['link']}" target="_blank" style="color:#58a6ff; font-weight:bold; text-decoration:none;">{n['title']}</a><br>
-                                <span style="color:#8b949e; font-size:0.8rem;">{n['publisher']} | {n['published']}</span>
+                            <div style="background:#161b22; padding:10px; border-left:3px solid #d29922; margin-bottom:10px; border-radius: 4px;">
+                                <a href="{n['link']}" target="_blank" style="color:#58a6ff; font-weight:bold; text-decoration:none; font-size: 1.1rem;">{n['title']}</a><br>
+                                <span style="color:#8b949e; font-size:0.85rem;">{n['publisher']} | {n['published']}</span>
                             </div>
                             """, unsafe_allow_html=True)
                     else:
-                        st.info("Donnée non validée ou flux Morningstar temporairement indisponible.")
+                        st.info("Aucune actualité récente validée.")
 
             except Exception as e:
-                st.error("Donnée non validée. Erreur d'exécution du flux de données.")
+                st.error(f"Donnée non validée. Erreur de traitement interne.")
 
 elif mode == "⚖️ Comparateur Matrice":
     tickers_input = st.text_input("Matrice", placeholder="Ex: AAPL, MSFT, LVMH.PA, CW8.PA", label_visibility="collapsed")
@@ -388,7 +404,7 @@ elif mode == "⚖️ Comparateur Matrice":
             for t in t_list:
                 try:
                     info = yf.Ticker(t).info
-                    if not info or 'symbol' not in info: continue
+                    if not info or ('symbol' not in info and 'currentPrice' not in info): continue
                     fx = get_fx_rate(info.get('currency', 'USD'))
                     
                     if info.get('quoteType') == 'ETF':
@@ -397,7 +413,7 @@ elif mode == "⚖️ Comparateur Matrice":
                     else:
                         d = extract_stock_data(info, fx)
                         res.append({'Ticker': t, 'Type': 'Action', 'Prix (€)': d['Prix'], 'Score': d['Score'], 'Dette/EBITDA': d['Levier'], 'PER': d['PER_Actuel'], 'Marge Nette': d['Marge_Nette']})
-                except: pass
+                except Exception: pass
             
             if res:
                 df = pd.DataFrame(res).sort_values(by="Score", ascending=False)
