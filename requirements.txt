@@ -3,3 +3,6 @@ yfinance
 pandas
 numpy
 plotly
+feedparser
+requests
+beautifulsoup4
