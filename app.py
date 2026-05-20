@@ -421,3 +421,4 @@ elif mode == "⚖️ Comparateur Matrice":
                 csv = df.to_csv(index=False).encode('utf-8')
                 st.download_button("Télécharger CSV", data=csv, file_name="matrice_alpha_pro.csv", mime="text/csv")
             else: st.error("Aucune donnée n'a pu être extraite.")
+                        
