@@ -4,11 +4,16 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import math
-import feedparser
 import urllib.parse
 import time
 import html
 from numbers import Real
+
+try:
+    import feedparser
+except ImportError:
+    feedparser = None
+
 
 st.set_page_config(
     page_title="Analyseur Bourse",
@@ -152,19 +157,17 @@ st.markdown("""
         z-index: 999999;
         left: 14px;
         top: calc(100% + 10px);
-        width: min(360px, 80vw);
+        width: min(390px, 82vw);
         padding: 13px 14px;
         border-radius: 14px;
         background: rgba(3,7,12,0.98);
-        border: 1px solid rgba(47,128,255,0.45);
+        border: 1px solid rgba(47,128,255,0.52);
         box-shadow: 0 20px 55px rgba(0,0,0,0.55);
         color: #f5f7f2;
         font-size: 0.82rem;
         line-height: 1.45;
         font-weight: 650;
         white-space: normal;
-        text-transform: none;
-        letter-spacing: 0;
         pointer-events: none;
     }
 
@@ -267,6 +270,47 @@ st.markdown("""
         color: rgba(245,247,242,0.72);
         font-size: 0.86rem;
         margin-top: 12px;
+    }
+
+    .metric-help-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 8px 0 18px 0;
+        overflow: visible;
+    }
+
+    .metric-help {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(47,128,255,0.14);
+        border: 1px solid rgba(47,128,255,0.38);
+        color: #f5f7f2;
+        font-size: 0.8rem;
+        font-weight: 850;
+        cursor: default;
+    }
+
+    .metric-help[data-tooltip]:hover::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        z-index: 999999;
+        left: 0;
+        top: calc(100% + 10px);
+        width: min(420px, 82vw);
+        padding: 13px 14px;
+        border-radius: 14px;
+        background: rgba(3,7,12,0.98);
+        border: 1px solid rgba(47,128,255,0.52);
+        box-shadow: 0 20px 55px rgba(0,0,0,0.55);
+        color: #f5f7f2;
+        font-size: 0.82rem;
+        line-height: 1.45;
+        font-weight: 650;
+        white-space: normal;
     }
 
     .expert-verdict {
@@ -394,6 +438,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+
 TOP_ACTIONS = [
     "AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "BRK-B", "JPM", "V", "MA",
     "LLY", "UNH", "XOM", "PG", "COST", "HD", "ASML", "SAP", "RMS.PA", "MC.PA",
@@ -412,47 +457,86 @@ TOP_ETFS = [
     "PAEEM.PA", "PUST.PA", "MSE.PA"
 ]
 
-MODULES = ["ANALYSE INDIVIDUELLE", "TOP SELECTION", "Comparer"]
+MODULES = ["ANALYSE INDIVIDUELLE", "TOP SELECTION", "COMPARER"]
 
 if "module_choice" not in st.session_state:
+    st.session_state.module_choice = "ANALYSE INDIVIDUELLE"
+
+if st.session_state.module_choice == "Comparer":
+    st.session_state.module_choice = "COMPARER"
+
+if st.session_state.module_choice not in MODULES:
     st.session_state.module_choice = "ANALYSE INDIVIDUELLE"
 
 if "analysis_ticker" not in st.session_state:
     st.session_state.analysis_ticker = ""
 
+
 RATIO_TOOLTIPS = {
-    "PER": "PER - Prix vs profits. Repere : 10 a 20. Tech accepte jusqu'a 30+. Cher si > 35.",
-    "PEG": "PEG - PER ajuste a la croissance. Repere : <= 1. Sous-evalue si < 1. Cher si > 2.",
-    "PRICE / BOOK": "P/B - Prix vs valeur du patrimoine. Repere : 1 a 2. Tres bas si < 1. Cher si > 3.",
-    "P/B": "P/B - Prix vs valeur du patrimoine. Repere : 1 a 2. Tres bas si < 1. Cher si > 3.",
-    "PRICE / SALES": "P/S - Prix vs chiffre d'affaires. Repere : < 2. Surevalue si > 5.",
-    "P/S": "P/S - Prix vs chiffre d'affaires. Repere : < 2. Surevalue si > 5.",
-    "EV / EBITDA": "EV / EBITDA - Valeur totale avec dette vs rentabilite brute. Repere : < 10. Plus c'est bas, mieux c'est.",
-    "MARGE OP": "Marge Operationnelle - Efficacite du business. Repere : > 15%.",
-    "MARGE OPERATIONNELLE": "Marge Operationnelle - Efficacite du business. Repere : > 15%.",
-    "MARGE NETTE": "Marge Nette - Benefice reel restant. Repere : > 10%. Luxe et Tech visent > 20%.",
-    "ROE": "ROE - Rendement de l'argent des actionnaires. Repere : > 15%.",
-    "ROCE": "ROCE / ROIC - Rendement global actionnaires + dettes. Repere : > 12%.",
-    "ROIC": "ROCE / ROIC - Rendement global actionnaires + dettes. Repere : > 12%.",
-    "ROA": "ROA - Rentabilite de toutes les machines/actifs. Repere : > 5%.",
-    "LEVIER DETTE": "Dette Nette / EBITDA - Annees pour rembourser la dette. Repere : < 2.5x. Danger si > 4x.",
-    "DETTE NETTE": "Dette Nette / EBITDA - Annees pour rembourser la dette. Repere : < 2.5x. Danger si > 4x.",
-    "DEBT / EQUITY": "Dette / Capitaux Propres - Poids des banques vs actionnaires. Repere : < 1 ou < 100%.",
-    "DETTE / CAPITAUX": "Dette / Capitaux Propres - Poids des banques vs actionnaires. Repere : < 1 ou < 100%.",
-    "CURRENT RATIO": "Current Ratio - Liquidite pour payer les factures a court terme. Repere : > 1.5. Alerte si < 1.",
-    "COUVERTURE": "Couverture des Interets - Capacite a payer les interets de la dette. Repere : > 5x.",
-    "PAYOUT": "Payout Ratio - Part du profit versee en dividende. Repere : 30% a 60%. Danger de coupure si > 80%.",
-    "DIVIDEND YIELD": "Dividend Yield - Rendement annuel du dividende. Repere : 2% a 5%. Piege si > 8%, cours souvent en chute.",
-    "FCF YIELD": "FCF Yield - Rendement du cash reel disponible. Repere : > 5%."
+    "PER": "PER - Prix vs profits. Calcul : prix de l'action / benefice par action. Repere : 10 a 20. Tech accepte jusqu'a 30+. Cher si > 35.",
+    "PEG": "PEG - PER ajuste a la croissance. Calcul : PER / croissance annuelle des profits. Repere : <= 1. Sous-evalue si < 1. Cher si > 2.",
+    "PRICE / BOOK": "P/B - Prix vs valeur du patrimoine. Calcul : prix de l'action / valeur comptable par action. Repere : 1 a 2. Tres bas si < 1. Cher si > 3.",
+    "PRICE / SALES": "P/S - Prix vs chiffre d'affaires. Calcul : capitalisation boursiere / chiffre d'affaires. Repere : < 2. Surevalue si > 5.",
+    "EV / EBITDA": "EV / EBITDA - Valeur totale avec dette vs rentabilite brute. Calcul : valeur d'entreprise / EBITDA. Repere : < 10. Plus c'est bas, mieux c'est.",
+    "MARGE OPERATIONNELLE": "Marge Operationnelle - Efficacite du business. Calcul : resultat operationnel / chiffre d'affaires x 100. Repere : > 15%.",
+    "MARGE NETTE": "Marge Nette - Benefice reel restant. Calcul : resultat net / chiffre d'affaires x 100. Repere : > 10%. Luxe et Tech visent > 20%.",
+    "ROE": "ROE - Rendement de l'argent des actionnaires. Calcul : resultat net / capitaux propres x 100. Repere : > 15%.",
+    "ROCE": "ROCE / ROIC - Rendement global actionnaires + dettes. Calcul : resultat operationnel apres impots / capital investi x 100. Repere : > 12%.",
+    "ROIC": "ROCE / ROIC - Rendement global actionnaires + dettes. Calcul : resultat operationnel apres impots / capital investi x 100. Repere : > 12%.",
+    "ROA": "ROA - Rentabilite de tous les actifs. Calcul : resultat net / total des actifs x 100. Repere : > 5%.",
+    "LEVIER DETTE / EBITDA": "Dette Nette / EBITDA - Annees pour rembourser la dette. Calcul : dette nette / EBITDA. Repere : < 2.5x. Danger si > 4x.",
+    "DETTE NETTE": "Dette nette - Dette apres deduction du cash. Calcul : dette totale - tresorerie.",
+    "DEBT / EQUITY": "Dette / Capitaux Propres - Poids des banques vs actionnaires. Calcul : dette totale / capitaux propres x 100. Repere : < 100%.",
+    "CURRENT RATIO": "Current Ratio - Liquidite court terme. Calcul : actifs courants / passifs courants. Repere : > 1.5. Alerte si < 1.",
+    "QUICK RATIO": "Quick Ratio - Liquidite immediate. Calcul : actifs courants hors stocks / passifs courants. Repere : > 1.",
+    "COUVERTURE DES INTERETS": "Couverture des Interets - Capacite a payer les interets de la dette. Calcul : EBIT / charges d'interets. Repere : > 5x.",
+    "PAYOUT RATIO": "Payout Ratio - Part du profit versee en dividende. Calcul : dividendes / resultat net x 100. Repere : 30% a 60%. Danger si > 80%.",
+    "DIVIDEND YIELD": "Dividend Yield - Rendement annuel du dividende. Calcul : dividende annuel par action / prix de l'action x 100. Repere : 2% a 5%. Piege si > 8%, cours souvent en chute.",
+    "FCF YIELD": "FCF Yield - Rendement du cash reel disponible. Calcul : free cash flow / capitalisation boursiere x 100. Repere : > 5%."
+}
+
+METRIC_TOOLTIPS = {
+    "Chiffre d'affaires": "Chiffre d'affaires - Ventes totales de l'entreprise sur la periode. Calcul : somme des revenus generes par l'activite.",
+    "Resultat brut": "Resultat brut - Profit apres cout direct des ventes. Calcul : chiffre d'affaires - cout des ventes.",
+    "EBITDA": "EBITDA - Rentabilite brute avant amortissements et financement. Calcul : resultat operationnel + amortissements et depreciations.",
+    "Resultat operationnel": "Resultat operationnel - Profit du coeur d'activite. Calcul : chiffre d'affaires - charges operationnelles.",
+    "Resultat net": "Resultat net - Benefice final pour les actionnaires. Calcul : resultat operationnel - interets - impots - elements exceptionnels.",
+    "Marge nette %": "Marge Nette - Benefice reel restant. Calcul : resultat net / chiffre d'affaires x 100. Repere : > 10%. Luxe et Tech visent > 20%.",
+    "Cash": "Cash - Tresorerie disponible. Calcul : cash et equivalents de tresorerie au bilan.",
+    "Dette totale": "Dette totale - Ensemble des dettes financieres. Calcul : dette court terme + dette long terme.",
+    "Dette nette": "Dette nette - Dette apres deduction du cash. Calcul : dette totale - tresorerie."
 }
 
 
 def get_ratio_tooltip(title):
     normalized = str(title).upper()
+    aliases = {
+        "PER TRAILING": "PER",
+        "PER FORWARD": "PER",
+        "PRICE / BOOK": "PRICE / BOOK",
+        "PRICE / SALES": "PRICE / SALES",
+        "MARGE OP": "MARGE OPERATIONNELLE",
+        "MARGE OPERATIONNELLE": "MARGE OPERATIONNELLE",
+        "MARGE NETTE": "MARGE NETTE",
+        "LEVIER DETTE": "LEVIER DETTE / EBITDA",
+        "DETTE / EBITDA": "LEVIER DETTE / EBITDA",
+        "PAYOUT": "PAYOUT RATIO",
+        "DEBT / EQUITY": "DEBT / EQUITY"
+    }
+
+    for alias, key in aliases.items():
+        if alias in normalized:
+            return RATIO_TOOLTIPS.get(key)
+
     for key, tooltip in RATIO_TOOLTIPS.items():
         if key in normalized:
             return tooltip
+
     return None
+
+
+def get_metric_tooltip(metric_name):
+    return METRIC_TOOLTIPS.get(str(metric_name), None)
 
 
 def resolve_fx_rate(currency_code):
@@ -597,6 +681,23 @@ def render_metric_card(title, html_value, tone=None, tooltip=None):
     )
 
 
+def render_metric_help_chips(metric_names):
+    chips = []
+
+    for metric in metric_names:
+        tooltip = get_metric_tooltip(metric)
+        if tooltip:
+            chips.append(
+                f'<span class="metric-help" data-tooltip="{html.escape(tooltip, quote=True)}">{html.escape(str(metric))}</span>'
+            )
+
+    if chips:
+        st.markdown(
+            f'<div class="metric-help-grid">{"".join(chips)}</div>',
+            unsafe_allow_html=True
+        )
+
+
 def calculer_rsi(data, window=14):
     delta = data.diff()
     gain = delta.where(delta > 0, 0).rolling(window=window).mean()
@@ -711,6 +812,11 @@ def fetch_info_live(ticker_symbol, retries=3, backoff=1):
 @st.cache_data(ttl=600)
 def fetch_info_with_retry(ticker_symbol, retries=3, backoff=1):
     return fetch_info_live(ticker_symbol, retries, backoff)
+
+
+@st.cache_data(ttl=900)
+def get_price_history(ticker_symbol, period):
+    return yf.Ticker(ticker_symbol).history(period=period)
 
 
 def extract_stock_data(info, fx_rate):
@@ -834,24 +940,25 @@ def extract_etf_data(info, ticker_symbol, fx_rate):
 def get_press_news(ticker_symbol, company_name):
     news = []
 
-    try:
-        clean_ticker = ticker_symbol.split(".")[0]
-        query = f'"{clean_ticker}" "{company_name}" finance'
-        encoded_query = urllib.parse.quote(query)
-        rss_url = f"https://news.google.com/rss/search?q={encoded_query}&hl=fr&gl=FR&ceid=FR:fr"
+    if feedparser is not None:
+        try:
+            clean_ticker = ticker_symbol.split(".")[0]
+            query = f'"{clean_ticker}" "{company_name}" finance'
+            encoded_query = urllib.parse.quote(query)
+            rss_url = f"https://news.google.com/rss/search?q={encoded_query}&hl=fr&gl=FR&ceid=FR:fr"
 
-        feed = feedparser.parse(rss_url)
+            feed = feedparser.parse(rss_url)
 
-        for entry in feed.entries[:5]:
-            title = entry.title.rsplit(" - ", 1)[0] if " - " in entry.title else entry.title
-            news.append({
-                "title": title,
-                "link": entry.link,
-                "publisher": entry.source.title if hasattr(entry, "source") and hasattr(entry.source, "title") else "Presse",
-                "published": entry.published[5:16] if hasattr(entry, "published") else "Recent"
-            })
-    except Exception:
-        pass
+            for entry in feed.entries[:5]:
+                title = entry.title.rsplit(" - ", 1)[0] if " - " in entry.title else entry.title
+                news.append({
+                    "title": title,
+                    "link": entry.link,
+                    "publisher": entry.source.title if hasattr(entry, "source") and hasattr(entry.source, "title") else "Presse",
+                    "published": entry.published[5:16] if hasattr(entry, "published") else "Recent"
+                })
+        except Exception:
+            pass
 
     if not news:
         try:
@@ -1175,8 +1282,7 @@ if mode == "ANALYSE INDIVIDUELLE":
                         render_metric_card("Debt / Equity", format_metric(data["Debt_Equity"], "%"), tone_lower(data["Debt_Equity"], 100))
 
             with tabs[1]:
-                tk_obj = yf.Ticker(ticker_input)
-                hist = tk_obj.history(period="5y")
+                hist = get_price_history(ticker_input, "5y")
 
                 if len(hist) > 200:
                     hist["Close_EUR"] = hist["Close"] * fx_rate
@@ -1232,7 +1338,13 @@ if mode == "ANALYSE INDIVIDUELLE":
                             if m in available_metrics
                         ]
 
-                        selected_metrics = st.multiselect("Metriques a afficher", available_metrics, default=default_metrics)
+                        selected_metrics = st.multiselect(
+                            "Metriques a afficher",
+                            available_metrics,
+                            default=default_metrics
+                        )
+
+                        render_metric_help_chips(selected_metrics)
 
                         if selected_metrics:
                             fig_metrics = go.Figure()
@@ -1356,8 +1468,8 @@ elif mode == "TOP SELECTION":
 
         st.plotly_chart(fig_rank, use_container_width=True)
 
-elif mode == "Comparer":
-    st.markdown("#### Comparer")
+elif mode == "COMPARER":
+    st.markdown("#### COMPARER")
 
     tickers_input = st.text_area(
         "",
