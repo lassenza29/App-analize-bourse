@@ -12,7 +12,7 @@ import time
 # CONFIGURATION
 # ==============================================================================
 st.set_page_config(
-    page_title=" Analyseur Bourse ",
+    page_title="Analyseur Bourse",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -31,10 +31,12 @@ st.markdown("""
         --text: #f5f7f2;
         --muted: #90999a;
         --line: rgba(255,255,255,0.10);
-        --green: #7cff9b;
-        --green-soft: rgba(124,255,155,0.14);
-        --blue: #7aa7ff;
-        --red: #ff6b6b;
+        --accent: #6fa8ff;
+        --accent-soft: rgba(111,168,255,0.16);
+        --green: #53ff9a;
+        --green-soft: rgba(83,255,154,0.13);
+        --red: #ff5757;
+        --red-soft: rgba(255,87,87,0.13);
         --yellow: #ffd166;
     }
 
@@ -44,9 +46,9 @@ st.markdown("""
 
     .stApp {
         background:
-            radial-gradient(circle at 18% 8%, rgba(124,255,155,0.12), transparent 28%),
-            radial-gradient(circle at 82% 4%, rgba(122,167,255,0.15), transparent 30%),
-            linear-gradient(180deg, #080b0d 0%, #050607 42%, #030404 100%);
+            radial-gradient(circle at 18% 8%, rgba(111,168,255,0.22), transparent 30%),
+            radial-gradient(circle at 86% 4%, rgba(71,114,255,0.18), transparent 34%),
+            linear-gradient(180deg, #07101f 0%, #05080e 42%, #030405 100%);
         color: var(--text);
     }
 
@@ -57,7 +59,7 @@ st.markdown("""
     }
 
     [data-testid="stHeader"] {
-        background: rgba(5,6,7,0.72);
+        background: rgba(5,8,14,0.74);
         backdrop-filter: blur(18px);
         border-bottom: 1px solid rgba(255,255,255,0.06);
     }
@@ -88,6 +90,7 @@ st.markdown("""
 
     .terminal-shell {
         background:
+            radial-gradient(circle at 80% 20%, rgba(111,168,255,0.16), transparent 34%),
             linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)),
             rgba(13,17,19,0.86);
         border: 1px solid rgba(255,255,255,0.12);
@@ -100,33 +103,14 @@ st.markdown("""
     .terminal-topline {
         display: flex;
         align-items: center;
-        justify-content: space-between;
+        justify-content: flex-end;
         gap: 16px;
         margin-bottom: 14px;
     }
 
-    .brand-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 10px;
-        color: var(--text);
-        font-size: 0.82rem;
-        font-weight: 800;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-    }
-
-    .brand-dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 999px;
-        background: var(--green);
-        box-shadow: 0 0 22px rgba(124,255,155,0.9);
-    }
-
     .status-pill {
-        color: #06100a;
-        background: var(--green);
+        color: #03101f;
+        background: var(--accent);
         border-radius: 999px;
         padding: 7px 12px;
         font-size: 0.72rem;
@@ -134,6 +118,7 @@ st.markdown("""
         text-transform: uppercase;
         letter-spacing: 0.06em;
         white-space: nowrap;
+        box-shadow: 0 10px 30px rgba(111,168,255,0.25);
     }
 
     .hero-title {
@@ -166,10 +151,24 @@ st.markdown("""
     }
 
     .fin-card:hover {
-        border-color: rgba(124,255,155,0.36);
+        border-color: rgba(111,168,255,0.38);
         background:
-            linear-gradient(180deg, rgba(124,255,155,0.08), rgba(255,255,255,0.018)),
+            linear-gradient(180deg, rgba(111,168,255,0.09), rgba(255,255,255,0.018)),
             rgba(13,17,19,0.96);
+    }
+
+    .fin-card.metric-positive {
+        border-color: rgba(83,255,154,0.38);
+        background:
+            linear-gradient(180deg, rgba(83,255,154,0.08), rgba(255,255,255,0.018)),
+            rgba(13,17,19,0.94);
+    }
+
+    .fin-card.metric-negative {
+        border-color: rgba(255,87,87,0.40);
+        background:
+            linear-gradient(180deg, rgba(255,87,87,0.08), rgba(255,255,255,0.018)),
+            rgba(13,17,19,0.94);
     }
 
     .fin-title {
@@ -189,6 +188,14 @@ st.markdown("""
         line-height: 1.15;
     }
 
+    .fin-val.metric-positive {
+        color: var(--green);
+    }
+
+    .fin-val.metric-negative {
+        color: var(--red);
+    }
+
     .fin-na {
         color: #5f6869;
         font-size: 1.2rem;
@@ -206,12 +213,20 @@ st.markdown("""
         text-align: left;
         padding: 24px;
         background:
-            radial-gradient(circle at 80% 20%, rgba(124,255,155,0.22), transparent 34%),
-            linear-gradient(145deg, #18251f, #09100d 72%);
-        border: 1px solid rgba(124,255,155,0.32);
+            radial-gradient(circle at 80% 20%, rgba(111,168,255,0.26), transparent 34%),
+            linear-gradient(145deg, #17243a, #07101f 72%);
+        border: 1px solid rgba(111,168,255,0.34);
         border-radius: 24px;
         min-height: 240px;
         box-shadow: 0 28px 70px rgba(0,0,0,0.34);
+    }
+
+    .score-container.metric-positive {
+        border-color: rgba(83,255,154,0.42);
+    }
+
+    .score-container.metric-negative {
+        border-color: rgba(255,87,87,0.42);
     }
 
     .score-title {
@@ -228,6 +243,14 @@ st.markdown("""
         line-height: 0.95;
         font-weight: 900;
         margin-top: 22px;
+    }
+
+    .score-val.metric-positive {
+        color: var(--green);
+    }
+
+    .score-val.metric-negative {
+        color: var(--red);
     }
 
     .score-caption {
@@ -278,9 +301,9 @@ st.markdown("""
     }
 
     .stTabs [aria-selected="true"] {
-        background: var(--green-soft);
+        background: var(--accent-soft);
         color: var(--text);
-        border-color: rgba(124,255,155,0.35);
+        border-color: rgba(111,168,255,0.38);
     }
 
     .stRadio [role="radiogroup"] {
@@ -304,27 +327,27 @@ st.markdown("""
 
     .stTextInput input:focus,
     .stTextArea textarea:focus {
-        border-color: rgba(124,255,155,0.55) !important;
-        box-shadow: 0 0 0 3px rgba(124,255,155,0.12) !important;
+        border-color: rgba(111,168,255,0.65) !important;
+        box-shadow: 0 0 0 3px rgba(111,168,255,0.14) !important;
     }
 
     .stButton button,
     .stDownloadButton button {
-        background: var(--green);
-        color: #041009;
+        background: var(--accent);
+        color: #03101f;
         border: 0;
         border-radius: 999px;
         padding: 0.75rem 1.25rem;
         font-weight: 950;
         letter-spacing: 0.02em;
         text-transform: uppercase;
-        box-shadow: 0 12px 30px rgba(124,255,155,0.18);
+        box-shadow: 0 12px 30px rgba(111,168,255,0.20);
     }
 
     .stButton button:hover,
     .stDownloadButton button:hover {
-        background: #a8ffba;
-        color: #041009;
+        background: #9bc2ff;
+        color: #03101f;
     }
 
     .stDataFrame {
@@ -332,13 +355,6 @@ st.markdown("""
         border-radius: 18px;
         overflow: hidden;
         background: rgba(13,17,19,0.9);
-    }
-
-    div[data-testid="stMetric"] {
-        background: rgba(13,17,19,0.86);
-        border: 1px solid var(--line);
-        border-radius: 18px;
-        padding: 16px;
     }
 
     hr {
@@ -397,10 +413,11 @@ def get_fx_rate(currency_code):
     if not currency_code or not isinstance(currency_code, str):
         return 1.0
 
-    curr = currency_code.upper().strip()
-    is_pence = curr in ["GBX", "GBP=X", "GBPp".upper()]
+    raw = currency_code.strip()
+    curr = raw.upper()
+    is_pence = curr == "GBX" or raw == "GBp"
 
-    if curr in ["GBX", "GBP=X", "GBP"]:
+    if curr in ["GBX", "GBP=X", "GBP"] or raw == "GBp":
         curr = "GBP"
 
     if curr == "EUR":
@@ -450,6 +467,10 @@ def safe_str(val):
     return str(val)
 
 
+def is_num(val):
+    return isinstance(val, (int, float)) and not isinstance(val, bool) and not pd.isna(val)
+
+
 def format_metric(val, suffix=""):
     if val is None:
         return "<span class='fin-na'>-</span>"
@@ -461,12 +482,57 @@ def format_metric(val, suffix=""):
     return f"{formatted} {suffix}".strip()
 
 
-def render_metric_card(title, html_value):
+def tone_score(value):
+    if not is_num(value):
+        return None
+    return "positive" if value >= 50 else "negative"
+
+
+def tone_higher(value, threshold=0):
+    if not is_num(value):
+        return None
+    return "positive" if value > threshold else "negative"
+
+
+def tone_lower(value, threshold):
+    if not is_num(value):
+        return None
+    return "positive" if value < threshold else "negative"
+
+
+def tone_between(value, low, high):
+    if not is_num(value):
+        return None
+    return "positive" if low < value < high else "negative"
+
+
+def tone_leverage(value):
+    if isinstance(value, str) and value.lower() == "cash positif":
+        return "positive"
+    if not is_num(value):
+        return None
+    return "positive" if value < 2 else "negative"
+
+
+def tone_target(target, price):
+    if not is_num(target) or not is_num(price):
+        return None
+    return "positive" if target > price else "negative"
+
+
+def tone_graham(graham, price):
+    if not is_num(graham) or not is_num(price):
+        return None
+    return "positive" if graham > price else "negative"
+
+
+def render_metric_card(title, html_value, tone=None):
+    tone_class = f" metric-{tone}" if tone in ["positive", "negative"] else ""
     st.markdown(
         f"""
-        <div class="fin-card">
+        <div class="fin-card{tone_class}">
             <div class="fin-title">{title}</div>
-            <div class="fin-val">{html_value}</div>
+            <div class="fin-val{tone_class}">{html_value}</div>
         </div>
         """,
         unsafe_allow_html=True
@@ -483,22 +549,53 @@ def calculer_rsi(data, window=14):
 
 def numeric_df_for_display(df):
     clean = df.copy()
+    text_cols = ["Ticker", "TICKER", "Nom", "NOM", "Type", "TYPE", "Régime"]
     for col in clean.columns:
-        if col not in ["Ticker", "TICKER", "Nom", "NOM", "Type", "TYPE", "Régime"]:
+        if col not in text_cols:
             clean[col] = pd.to_numeric(clean[col], errors="coerce")
     return clean
 
 
+def cell_color(value, col_name):
+    if not is_num(value):
+        return ""
+
+    col = col_name.upper()
+
+    if "SCORE" in col:
+        good = value >= 50
+    elif "PER" in col:
+        good = 0 < value < 25
+    elif "ROE" in col or "MARGE" in col:
+        good = value > 0
+    elif "DETTE/EBITDA" in col:
+        good = value < 2
+    elif "FRAIS" in col or "TER" in col:
+        good = value < 0.30
+    else:
+        return ""
+
+    color = "#53ff9a" if good else "#ff5757"
+    return f"color: {color}; font-weight: 900;"
+
+
 def format_dataframe(df):
     formatters = {}
+
     for col in df.columns:
-        if col.upper() in ["SCORE"]:
+        if col.upper() == "SCORE":
             formatters[col] = "{:.0f}"
         elif any(key in col for key in ["Prix", "PRIX", "PER", "ROE", "Marge", "MARGE", "FRAIS", "TER", "DETTE"]):
             formatters[col] = "{:.2f}"
         elif any(key in col for key in ["Market", "MARKET", "AUM", "Cap", "CAP"]):
             formatters[col] = "{:.0f}"
-    return df.style.format(formatters, na_rep="-")
+
+    styled = df.style.format(formatters, na_rep="-")
+
+    def color_column(column):
+        return [cell_color(value, column.name) for value in column]
+
+    return styled.apply(color_column, axis=0)
 
 
 # ==============================================================================
@@ -861,7 +958,6 @@ def get_financial_metric_history(ticker_symbol, fx_rate):
 st.markdown("""
 <div class="terminal-shell">
     <div class="terminal-topline">
-        <div class="brand-pill"><span class="brand-dot"></span> Alpha Terminal Pro</div>
         <div class="status-pill">Live Market Data</div>
     </div>
     <div class="hero-title">Finance cockpit.</div>
@@ -873,7 +969,7 @@ st.markdown("""
 
 mode = st.radio(
     "Module",
-    ["ANALYSE INDIVIDUELLE", "TOP SELECTION", "MATRICE COMPARATIVE"],
+    ["ANALYSE INDIVIDUELLE", "TOP SELECTION", "Comparer"],
     label_visibility="collapsed",
     horizontal=True
 )
@@ -904,7 +1000,7 @@ if mode == "ANALYSE INDIVIDUELLE":
             is_etf = info.get("quoteType") == "ETF" or "totalAssets" in info
 
             st.markdown(
-                f"<h2>{nom} <span style='color:#7cff9b; font-size:1.05rem;'>// {ticker_input}</span></h2>",
+                f"<h2>{nom} <span style='color:#6fa8ff; font-size:1.05rem;'>// {ticker_input}</span></h2>",
                 unsafe_allow_html=True
             )
 
@@ -919,32 +1015,33 @@ if mode == "ANALYSE INDIVIDUELLE":
 
                     c1, c2, c3, c4 = st.columns(4)
                     with c1:
-                        render_metric_card("Score ETF", format_metric(data["Score"], "/100"))
+                        render_metric_card("Score ETF", format_metric(data["Score"], "/100"), tone_score(data["Score"]))
                     with c2:
                         render_metric_card("Net Asset Value", format_metric(data["Prix"], "€"))
                     with c3:
-                        render_metric_card("Total Expense Ratio", format_metric(data["TER"], "%"))
+                        render_metric_card("Total Expense Ratio", format_metric(data["TER"], "%"), tone_lower(data["TER"], 0.30))
                     with c4:
-                        render_metric_card("Assets Under Management", format_metric(data["AUM"], "M€"))
+                        render_metric_card("Assets Under Management", format_metric(data["AUM"], "M€"), tone_higher(data["AUM"], 100))
 
                     c5, c6, c7 = st.columns(3)
                     with c5:
-                        render_metric_card("Regime fiscal", data["PEA"])
+                        render_metric_card("Regime fiscal", data["PEA"], "positive" if data["PEA"] == "ELIGIBLE PEA" else None)
                     with c6:
                         render_metric_card("Politique dividende", data["Distribution"])
                     with c7:
-                        render_metric_card("Replication", data["Replication"])
+                        render_metric_card("Replication", data["Replication"], "positive" if data["Replication"] == "PHYSIQUE" else None)
                 else:
                     data = extract_stock_data(info, fx_rate)
+                    score_tone = tone_score(data["Score"])
 
                     c1, c2, c3 = st.columns([1.15, 2, 2])
 
                     with c1:
                         st.markdown(
                             f"""
-                            <div class="score-container">
+                            <div class="score-container metric-{score_tone}">
                                 <div class="score-title">Score d'integrite</div>
-                                <div class="score-val">{data["Score"]}</div>
+                                <div class="score-val metric-{score_tone}">{data["Score"]}</div>
                                 <div class="score-caption">Notation fondamentale sur 100</div>
                             </div>
                             """,
@@ -953,11 +1050,15 @@ if mode == "ANALYSE INDIVIDUELLE":
 
                     with c2:
                         render_metric_card("Prix marche", format_metric(data["Prix"], "€"))
-                        render_metric_card("Consensus target", f"{format_metric(data['Target'], '€')} // {data['Reco']}")
+                        render_metric_card(
+                            "Consensus target",
+                            f"{format_metric(data['Target'], '€')} // {data['Reco']}",
+                            tone_target(data["Target"], data["Prix"])
+                        )
 
                     with c3:
                         render_metric_card("Capitalisation", format_metric(data["MarketCap"], "M€"))
-                        render_metric_card("Croissance CA", format_metric(data["Rev_Growth"], "%"))
+                        render_metric_card("Croissance CA", format_metric(data["Rev_Growth"], "%"), tone_higher(data["Rev_Growth"], 0))
 
                     st.markdown("<hr>", unsafe_allow_html=True)
 
@@ -965,30 +1066,30 @@ if mode == "ANALYSE INDIVIDUELLE":
 
                     with col_a:
                         st.markdown("#### Valorisation")
-                        render_metric_card("PER trailing", format_metric(data["PER_Actuel"], "x"))
-                        render_metric_card("PER forward", format_metric(data["PER_Futur"], "x"))
-                        render_metric_card("Price / Sales", format_metric(data["PS"], "x"))
-                        render_metric_card("Price / Book", format_metric(data["PB"], "x"))
-                        render_metric_card("EV / EBITDA", format_metric(data["EV_EBITDA"], "x"))
-                        render_metric_card("Valeur Graham", format_metric(data["Graham"], "€"))
+                        render_metric_card("PER trailing", format_metric(data["PER_Actuel"], "x"), tone_between(data["PER_Actuel"], 0, 25))
+                        render_metric_card("PER forward", format_metric(data["PER_Futur"], "x"), tone_between(data["PER_Futur"], 0, 25))
+                        render_metric_card("Price / Sales", format_metric(data["PS"], "x"), tone_between(data["PS"], 0, 6))
+                        render_metric_card("Price / Book", format_metric(data["PB"], "x"), tone_between(data["PB"], 0, 5))
+                        render_metric_card("EV / EBITDA", format_metric(data["EV_EBITDA"], "x"), tone_between(data["EV_EBITDA"], 0, 15))
+                        render_metric_card("Valeur Graham", format_metric(data["Graham"], "€"), tone_graham(data["Graham"], data["Prix"]))
 
                     with col_b:
                         st.markdown("#### Rentabilite")
-                        render_metric_card("Marge brute", format_metric(data["Marge_Brute"], "%"))
-                        render_metric_card("Marge operationnelle", format_metric(data["Marge_Op"], "%"))
-                        render_metric_card("Marge nette", format_metric(data["Marge_Nette"], "%"))
-                        render_metric_card("ROE", format_metric(data["ROE"], "%"))
-                        render_metric_card("ROA", format_metric(data["ROA"], "%"))
-                        render_metric_card("Payout ratio", format_metric(data["Payout"], "%"))
+                        render_metric_card("Marge brute", format_metric(data["Marge_Brute"], "%"), tone_higher(data["Marge_Brute"], 0))
+                        render_metric_card("Marge operationnelle", format_metric(data["Marge_Op"], "%"), tone_higher(data["Marge_Op"], 0))
+                        render_metric_card("Marge nette", format_metric(data["Marge_Nette"], "%"), tone_higher(data["Marge_Nette"], 0))
+                        render_metric_card("ROE", format_metric(data["ROE"], "%"), tone_higher(data["ROE"], 0))
+                        render_metric_card("ROA", format_metric(data["ROA"], "%"), tone_higher(data["ROA"], 0))
+                        render_metric_card("Payout ratio", format_metric(data["Payout"], "%"), tone_between(data["Payout"], 0, 70))
 
                     with col_c:
                         st.markdown("#### Bilan")
-                        render_metric_card("Dette nette globale", format_metric(data["Dette_Nette"], "M€"))
-                        render_metric_card("EBITDA", format_metric(data["EBITDA"], "M€"))
-                        render_metric_card("Levier dette / EBITDA", format_metric(data["Levier"], "x"))
-                        render_metric_card("Current ratio", format_metric(data["Current_Ratio"]))
-                        render_metric_card("Quick ratio", format_metric(data["Quick_Ratio"]))
-                        render_metric_card("Debt / Equity", format_metric(data["Debt_Equity"], "%"))
+                        render_metric_card("Dette nette globale", format_metric(data["Dette_Nette"], "M€"), tone_lower(data["Dette_Nette"], 0))
+                        render_metric_card("EBITDA", format_metric(data["EBITDA"], "M€"), tone_higher(data["EBITDA"], 0))
+                        render_metric_card("Levier dette / EBITDA", format_metric(data["Levier"], "x"), tone_leverage(data["Levier"]))
+                        render_metric_card("Current ratio", format_metric(data["Current_Ratio"]), tone_higher(data["Current_Ratio"], 1.2))
+                        render_metric_card("Quick ratio", format_metric(data["Quick_Ratio"]), tone_higher(data["Quick_Ratio"], 1.0))
+                        render_metric_card("Debt / Equity", format_metric(data["Debt_Equity"], "%"), tone_lower(data["Debt_Equity"], 100))
 
             with tabs[1]:
                 tk_obj = yf.Ticker(ticker_input)
@@ -1024,7 +1125,7 @@ if mode == "ANALYSE INDIVIDUELLE":
                             x=hist.index,
                             y=hist["SMA50"],
                             name="MM50",
-                            line=dict(color="#7cff9b", width=1.3)
+                            line=dict(color="#6fa8ff", width=1.3)
                         ),
                         row=1,
                         col=1
@@ -1035,7 +1136,7 @@ if mode == "ANALYSE INDIVIDUELLE":
                             x=hist.index,
                             y=hist["SMA200"],
                             name="MM200",
-                            line=dict(color="#7aa7ff", width=1.3)
+                            line=dict(color="#53ff9a", width=1.3)
                         ),
                         row=1,
                         col=1
@@ -1052,8 +1153,8 @@ if mode == "ANALYSE INDIVIDUELLE":
                         col=1
                     )
 
-                    fig.add_hline(y=70, line_color="#ff6b6b", line_width=1, row=2, col=1)
-                    fig.add_hline(y=30, line_color="#7cff9b", line_width=1, row=2, col=1)
+                    fig.add_hline(y=70, line_color="#ff5757", line_width=1, row=2, col=1)
+                    fig.add_hline(y=30, line_color="#53ff9a", line_width=1, row=2, col=1)
 
                     fig.update_layout(
                         height=650,
@@ -1096,7 +1197,7 @@ if mode == "ANALYSE INDIVIDUELLE":
                         if selected_metrics:
                             fig_metrics = go.Figure()
 
-                            colors = ["#7cff9b", "#7aa7ff", "#ffd166", "#ff6b6b", "#f5f7f2", "#9b8cff"]
+                            colors = ["#6fa8ff", "#53ff9a", "#ffd166", "#ff5757", "#f5f7f2", "#9b8cff"]
 
                             for i, metric in enumerate(selected_metrics):
                                 fig_metrics.add_trace(
@@ -1177,7 +1278,7 @@ elif mode == "TOP SELECTION":
             render_metric_card("Meilleur actif", f"{best['Ticker']}")
 
         with c2:
-            render_metric_card("Score", format_metric(best["Score"], "/100"))
+            render_metric_card("Score", format_metric(best["Score"], "/100"), tone_score(best["Score"]))
 
         with c3:
             render_metric_card("Prix", format_metric(best.get("Prix €"), "€"))
@@ -1199,9 +1300,9 @@ elif mode == "TOP SELECTION":
                 marker=dict(
                     color=ranking["Score"],
                     colorscale=[
-                        [0, "#ff6b6b"],
+                        [0, "#ff5757"],
                         [0.5, "#ffd166"],
-                        [1, "#7cff9b"]
+                        [1, "#53ff9a"]
                     ],
                     cmin=0,
                     cmax=100
@@ -1224,10 +1325,10 @@ elif mode == "TOP SELECTION":
         st.plotly_chart(fig_rank, use_container_width=True)
 
 # ==============================================================================
-# MATRICE COMPARATIVE
+# COMPARER
 # ==============================================================================
-elif mode == "MATRICE COMPARATIVE":
-    st.markdown("#### Comparateur multi-actifs")
+elif mode == "Comparer":
+    st.markdown("#### Comparer")
 
     tickers_input = st.text_area(
         "",
@@ -1321,9 +1422,9 @@ elif mode == "MATRICE COMPARATIVE":
                     with c1:
                         render_metric_card("Actifs compares", str(len(df)))
                     with c2:
-                        render_metric_card("Meilleur score", format_metric(df["SCORE"].max(), "/100"))
+                        render_metric_card("Meilleur score", format_metric(df["SCORE"].max(), "/100"), tone_score(df["SCORE"].max()))
                     with c3:
-                        render_metric_card("Score moyen", format_metric(df["SCORE"].mean(), "/100"))
+                        render_metric_card("Score moyen", format_metric(df["SCORE"].mean(), "/100"), tone_score(df["SCORE"].mean()))
                     with c4:
                         render_metric_card("Leader", str(df.iloc[0]["TICKER"]))
 
@@ -1343,9 +1444,9 @@ elif mode == "MATRICE COMPARATIVE":
                                 marker=dict(
                                     color=df["SCORE"],
                                     colorscale=[
-                                        [0, "#ff6b6b"],
+                                        [0, "#ff5757"],
                                         [0.5, "#ffd166"],
-                                        [1, "#7cff9b"]
+                                        [1, "#53ff9a"]
                                     ],
                                     cmin=0,
                                     cmax=100
@@ -1367,7 +1468,7 @@ elif mode == "MATRICE COMPARATIVE":
                                 mode="markers+text",
                                 text=chart_df["TICKER"],
                                 textposition="top center",
-                                marker=dict(size=16, color="#7cff9b", line=dict(color="#f5f7f2", width=1))
+                                marker=dict(size=16, color="#6fa8ff", line=dict(color="#f5f7f2", width=1))
                             )
                         )
 
@@ -1386,7 +1487,7 @@ elif mode == "MATRICE COMPARATIVE":
                                 mode="markers+text",
                                 text=chart_df["TICKER"],
                                 textposition="top center",
-                                marker=dict(size=16, color="#7cff9b", line=dict(color="#f5f7f2", width=1))
+                                marker=dict(size=16, color="#6fa8ff", line=dict(color="#f5f7f2", width=1))
                             )
                         )
 
