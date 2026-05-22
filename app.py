@@ -12,7 +12,7 @@ import time
 # CONFIGURATION
 # ==============================================================================
 st.set_page_config(
-    page_title="Alpha Terminal Pro",
+    page_title="",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
