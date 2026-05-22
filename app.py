@@ -7,6 +7,7 @@ import math
 import feedparser
 import urllib.parse
 import time
+import html
 from numbers import Real
 
 # ==============================================================================
@@ -134,6 +135,7 @@ st.markdown("""
         border-radius: 18px;
         box-shadow: 0 18px 46px rgba(0,0,0,0.24);
         min-height: 112px;
+        cursor: default;
     }
 
     .fin-card:hover {
@@ -390,6 +392,55 @@ TOP_ETFS = [
     "PAEEM.PA", "PUST.PA", "MSE.PA"
 ]
 
+MODULES = ["ANALYSE INDIVIDUELLE", "TOP SELECTION", "Comparer"]
+
+if "module_choice" not in st.session_state:
+    st.session_state.module_choice = "ANALYSE INDIVIDUELLE"
+
+if "analysis_ticker" not in st.session_state:
+    st.session_state.analysis_ticker = ""
+
+if "module_radio" not in st.session_state:
+    st.session_state.module_radio = st.session_state.module_choice
+
+# ==============================================================================
+# REFERENTIEL DES RATIOS
+# ==============================================================================
+RATIO_TOOLTIPS = {
+    "PER": "PER (Prix vs profits) : 10 a 20. Tech accepte jusqu'a 30+, cher si > 35.",
+    "PEG": "PEG (PER ajuste a la croissance) : <= 1. Sous-evalue si < 1, cher si > 2.",
+    "PRICE / BOOK": "P/B (Prix vs valeur du patrimoine) : 1 a 2. Tres bas si < 1, cher si > 3.",
+    "P/B": "P/B (Prix vs valeur du patrimoine) : 1 a 2. Tres bas si < 1, cher si > 3.",
+    "PRICE / SALES": "P/S (Prix vs chiffre d'affaires) : < 2. Surevalue si > 5.",
+    "P/S": "P/S (Prix vs chiffre d'affaires) : < 2. Surevalue si > 5.",
+    "EV / EBITDA": "EV / EBITDA (Valeur totale avec dette vs rentabilite brute) : < 10. Plus c'est bas, mieux c'est.",
+    "MARGE OP": "Marge Operationnelle (Efficacite du business) : > 15%.",
+    "MARGE OPERATIONNELLE": "Marge Operationnelle (Efficacite du business) : > 15%.",
+    "MARGE NETTE": "Marge Nette (Benefice reel restant) : > 10%. Luxe et Tech visent > 20%.",
+    "ROE": "ROE (Rendement de l'argent des actionnaires) : > 15%.",
+    "ROCE": "ROCE / ROIC (Rendement global actionnaires + dettes) : > 12%.",
+    "ROIC": "ROCE / ROIC (Rendement global actionnaires + dettes) : > 12%.",
+    "ROA": "ROA (Rentabilite de toutes les machines/actifs) : > 5%.",
+    "LEVIER DETTE": "Dette Nette / EBITDA (Annees pour rembourser la dette) : < 2.5x. Danger si > 4x.",
+    "DETTE NETTE": "Dette Nette / EBITDA (Annees pour rembourser la dette) : < 2.5x. Danger si > 4x.",
+    "DEBT / EQUITY": "Dette / Capitaux Propres (Poids des banques vs actionnaires) : < 1 ou < 100%.",
+    "DETTE / CAPITAUX": "Dette / Capitaux Propres (Poids des banques vs actionnaires) : < 1 ou < 100%.",
+    "CURRENT RATIO": "Current Ratio (Liquidite pour payer les factures a court terme) : > 1.5. Alerte si < 1.",
+    "COUVERTURE": "Couverture des Interets (Capacite a payer les interets de la dette) : > 5x.",
+    "PAYOUT": "Payout Ratio (Part du profit versee en dividende) : 30% a 60%. Danger de coupure si > 80%.",
+    "DIVIDEND YIELD": "Dividend Yield (Rendement annuel du dividende) : 2% a 5%. Piege si > 8%, cours souvent en chute.",
+    "FCF YIELD": "FCF Yield (Rendement du cash reel disponible) : > 5%."
+}
+
+
+def get_ratio_tooltip(title):
+    normalized = str(title).upper()
+    for key, tooltip in RATIO_TOOLTIPS.items():
+        if key in normalized:
+            return tooltip
+    return None
+
+
 # ==============================================================================
 # OUTILS
 # ==============================================================================
@@ -519,11 +570,14 @@ def tone_graham(graham, price):
     return "positive" if graham > price else "negative"
 
 
-def render_metric_card(title, html_value, tone=None):
+def render_metric_card(title, html_value, tone=None, tooltip=None):
+    tooltip_text = tooltip if tooltip is not None else get_ratio_tooltip(title)
+    tooltip_attr = f' title="{html.escape(tooltip_text)}"' if tooltip_text else ""
     tone_class = f" metric-{tone}" if tone in ["positive", "negative"] else ""
+
     st.markdown(
         f"""
-        <div class="fin-card{tone_class}">
+        <div class="fin-card{tone_class}"{tooltip_attr}>
             <div class="fin-title">{title}</div>
             <div class="fin-val{tone_class}">{html_value}</div>
         </div>
@@ -589,6 +643,34 @@ def format_dataframe(df):
         return [cell_color(value, column.name) for value in column]
 
     return styled.apply(color_column, axis=0)
+
+
+def open_asset_in_analysis(ticker):
+    st.session_state.analysis_ticker = str(ticker).upper().strip()
+    st.session_state.module_choice = "ANALYSE INDIVIDUELLE"
+    st.session_state.module_radio = "ANALYSE INDIVIDUELLE"
+    st.rerun()
+
+
+def render_open_asset_buttons(df, key_prefix):
+    if df.empty:
+        return
+
+    st.markdown("#### Ouvrir en analyse individuelle")
+    cols = st.columns(2)
+
+    for i, (_, row) in enumerate(df.iterrows()):
+        ticker = str(row.get("Ticker", row.get("TICKER", ""))).upper().strip()
+        name = str(row.get("Nom", row.get("NOM", ""))).strip()
+
+        if not ticker:
+            continue
+
+        label = f"{ticker} - {name}" if name else ticker
+
+        with cols[i % 2]:
+            if st.button(label, key=f"{key_prefix}_{i}_{ticker}"):
+                open_asset_in_analysis(ticker)
 
 
 # ==============================================================================
@@ -965,11 +1047,14 @@ st.markdown("""
 
 mode = st.radio(
     "Module",
-    ["ANALYSE INDIVIDUELLE", "TOP SELECTION", "COMPARER"],
+    MODULES,
+    index=MODULES.index(st.session_state.module_choice),
+    key="module_radio",
     label_visibility="collapsed",
     horizontal=True
 )
 
+st.session_state.module_choice = mode
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ==============================================================================
@@ -979,7 +1064,8 @@ if mode == "ANALYSE INDIVIDUELLE":
     ticker_input = st.text_input(
         "",
         placeholder="Rechercher un actif : AAPL, MSFT, LVMH.PA, CW8.PA...",
-        label_visibility="collapsed"
+        label_visibility="collapsed",
+        key="analysis_ticker"
     ).upper().strip()
 
     if ticker_input:
@@ -1236,8 +1322,9 @@ elif mode == "TOP SELECTION":
             render_metric_card("Prix", format_metric(best.get("Prix €"), "€"))
 
         st.markdown("<br>", unsafe_allow_html=True)
-
         st.dataframe(format_dataframe(ranking), use_container_width=True, height=430)
+
+        render_open_asset_buttons(ranking, "top_selection_open")
 
         fig_rank = go.Figure()
 
@@ -1377,6 +1464,9 @@ elif mode == "Comparer":
                         render_metric_card("Leader", str(df.iloc[0]["TICKER"]))
 
                     st.dataframe(format_dataframe(df), use_container_width=True, height=460)
+
+                    button_df = df.rename(columns={"TICKER": "Ticker", "NOM": "Nom"})
+                    render_open_asset_buttons(button_df, "comparer_open")
 
                     if show_chart == "Score":
                         fig = go.Figure()
