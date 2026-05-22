@@ -12,7 +12,7 @@ import time
 # CONFIGURATION
 # ==============================================================================
 st.set_page_config(
-    page_title="",
+    page_title=" Analyseur Bourse ",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
