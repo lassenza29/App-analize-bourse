@@ -1,7 +1,6 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
-import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import math
@@ -9,6 +8,9 @@ import feedparser
 import urllib.parse
 import time
 
+# ==============================================================================
+# CONFIGURATION
+# ==============================================================================
 st.set_page_config(
     page_title="Alpha Terminal Pro",
     page_icon="📈",
@@ -16,204 +18,359 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# ==============================================================================
+# DESIGN
+# ==============================================================================
 st.markdown("""
 <style>
-    .stApp {
-        background: radial-gradient(circle at top left, #18231f 0%, #08110f 32%, #030505 100%);
-        color: #f3efe4;
-        font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+    :root {
+        --bg: #050607;
+        --panel: #0d1113;
+        --panel-soft: #11181b;
+        --panel-light: #172024;
+        --text: #f5f7f2;
+        --muted: #90999a;
+        --line: rgba(255,255,255,0.10);
+        --green: #7cff9b;
+        --green-soft: rgba(124,255,155,0.14);
+        --blue: #7aa7ff;
+        --red: #ff6b6b;
+        --yellow: #ffd166;
     }
 
-    h1, h2, h3, h4, h5 {
-        color: #f7f1df !important;
-        font-weight: 500 !important;
-        letter-spacing: 0;
-        text-transform: none;
+    html, body, [class*="css"] {
+        font-family: "Avenir Next", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    }
+
+    .stApp {
+        background:
+            radial-gradient(circle at 18% 8%, rgba(124,255,155,0.12), transparent 28%),
+            radial-gradient(circle at 82% 4%, rgba(122,167,255,0.15), transparent 30%),
+            linear-gradient(180deg, #080b0d 0%, #050607 42%, #030404 100%);
+        color: var(--text);
     }
 
     .block-container {
-        padding-top: 2rem;
-        padding-bottom: 4rem;
+        padding-top: 5.2rem !important;
+        padding-bottom: 4rem !important;
+        max-width: 1280px;
     }
 
-    .terminal-header {
-        border-bottom: 1px solid rgba(247, 241, 223, 0.16);
-        padding-bottom: 18px;
-        margin-bottom: 26px;
+    [data-testid="stHeader"] {
+        background: rgba(5,6,7,0.72);
+        backdrop-filter: blur(18px);
+        border-bottom: 1px solid rgba(255,255,255,0.06);
     }
 
-    .terminal-kicker {
-        color: #9fb7a4;
-        font-size: 0.78rem;
-        letter-spacing: 1.6px;
+    [data-testid="stToolbar"] {
+        right: 1rem;
+    }
+
+    h1, h2, h3, h4, h5 {
+        color: var(--text) !important;
+        font-weight: 700 !important;
+        letter-spacing: 0 !important;
+        text-transform: none !important;
+    }
+
+    h2 {
+        font-size: 1.85rem !important;
+        margin-bottom: 0.9rem !important;
+    }
+
+    h3 {
+        font-size: 1.25rem !important;
+    }
+
+    h4 {
+        font-size: 1rem !important;
+    }
+
+    .terminal-shell {
+        background:
+            linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)),
+            rgba(13,17,19,0.86);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 22px;
+        padding: 22px 24px;
+        box-shadow: 0 26px 80px rgba(0,0,0,0.42);
+        margin-bottom: 24px;
+    }
+
+    .terminal-topline {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 14px;
+    }
+
+    .brand-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--text);
+        font-size: 0.82rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
         text-transform: uppercase;
     }
 
-    .terminal-title {
-        font-size: 2.1rem;
-        color: #f7f1df;
-        font-weight: 500;
-        margin-top: 6px;
+    .brand-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: var(--green);
+        box-shadow: 0 0 22px rgba(124,255,155,0.9);
     }
 
-    .terminal-subtitle {
-        color: #9d9a8f;
-        font-size: 0.95rem;
-        margin-top: 4px;
+    .status-pill {
+        color: #06100a;
+        background: var(--green);
+        border-radius: 999px;
+        padding: 7px 12px;
+        font-size: 0.72rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        white-space: nowrap;
+    }
+
+    .hero-title {
+        font-size: clamp(2.2rem, 5vw, 4.8rem);
+        line-height: 0.95;
+        font-weight: 850;
+        letter-spacing: 0 !important;
+        color: var(--text);
+        margin: 0;
+    }
+
+    .hero-subtitle {
+        max-width: 780px;
+        color: var(--muted);
+        font-size: 1rem;
+        line-height: 1.55;
+        margin-top: 14px;
     }
 
     .fin-card {
-        background: rgba(12, 18, 16, 0.86);
-        border: 1px solid rgba(247, 241, 223, 0.12);
+        background:
+            linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.018)),
+            rgba(13,17,19,0.92);
+        border: 1px solid var(--line);
         padding: 18px;
         margin-bottom: 16px;
-        border-radius: 6px;
-        box-shadow: 0 16px 40px rgba(0,0,0,0.22);
+        border-radius: 18px;
+        box-shadow: 0 18px 46px rgba(0,0,0,0.24);
+        min-height: 112px;
     }
 
     .fin-card:hover {
-        border-color: rgba(180, 206, 151, 0.45);
-        background: rgba(16, 24, 21, 0.94);
+        border-color: rgba(124,255,155,0.36);
+        background:
+            linear-gradient(180deg, rgba(124,255,155,0.08), rgba(255,255,255,0.018)),
+            rgba(13,17,19,0.96);
     }
 
     .fin-title {
+        color: var(--muted);
         font-size: 0.72rem;
-        color: #8b9188;
+        font-weight: 800;
+        letter-spacing: 0.08em;
         text-transform: uppercase;
-        font-weight: 600;
-        letter-spacing: 1.2px;
-        margin-bottom: 10px;
+        margin-bottom: 12px;
     }
 
     .fin-val {
-        font-size: 1.55rem;
-        color: #f7f1df;
-        font-weight: 500;
-        font-family: "SF Mono", "Courier New", monospace;
+        color: var(--text);
+        font-size: 1.45rem;
+        font-weight: 850;
+        letter-spacing: 0;
+        line-height: 1.15;
     }
 
     .fin-na {
-        color: #666b64;
-        font-size: 1.15rem;
-        font-weight: 400;
+        color: #5f6869;
+        font-size: 1.2rem;
     }
 
     .fin-cash {
-        color: #b4ce97;
-        font-size: 1.1rem;
-        font-weight: 600;
+        color: var(--green);
+        font-size: 1.05rem;
+        font-weight: 900;
     }
 
     .score-container {
-        text-align: center;
-        padding: 34px 20px;
-        background: linear-gradient(180deg, rgba(24, 36, 31, 0.95), rgba(8, 13, 12, 0.95));
-        border: 1px solid rgba(180, 206, 151, 0.28);
-        border-radius: 8px;
-        min-height: 176px;
+        position: relative;
+        overflow: hidden;
+        text-align: left;
+        padding: 24px;
+        background:
+            radial-gradient(circle at 80% 20%, rgba(124,255,155,0.22), transparent 34%),
+            linear-gradient(145deg, #18251f, #09100d 72%);
+        border: 1px solid rgba(124,255,155,0.32);
+        border-radius: 24px;
+        min-height: 240px;
+        box-shadow: 0 28px 70px rgba(0,0,0,0.34);
     }
 
     .score-title {
-        font-size: 0.78rem;
-        color: #9fb7a4;
+        color: rgba(245,247,242,0.72);
+        font-size: 0.75rem;
+        font-weight: 900;
         text-transform: uppercase;
-        letter-spacing: 1.6px;
-        margin-bottom: 15px;
+        letter-spacing: 0.08em;
     }
 
     .score-val {
-        font-size: 4.4rem;
-        font-weight: 500;
-        color: #f7f1df;
-        line-height: 1;
+        color: var(--text);
+        font-size: 5.4rem;
+        line-height: 0.95;
+        font-weight: 900;
+        margin-top: 22px;
+    }
+
+    .score-caption {
+        color: rgba(245,247,242,0.72);
+        font-size: 0.86rem;
+        margin-top: 12px;
+    }
+
+    .expert-verdict {
+        border: 1px solid var(--line);
+        border-left: 6px solid #777;
+        border-radius: 18px;
+        padding: 20px;
+        background: rgba(13,17,19,0.88);
+        margin-bottom: 24px;
+    }
+
+    .buy-verdict { border-left-color: var(--green); }
+    .hold-verdict { border-left-color: var(--yellow); }
+    .sell-verdict { border-left-color: var(--red); }
+
+    .expert-verdict h4 {
+        margin: 0 0 8px 0;
+        color: var(--text) !important;
+    }
+
+    .expert-verdict p {
+        color: #b8c0c0;
+        line-height: 1.6;
+        font-size: 0.95rem;
+        margin: 0;
     }
 
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
-        border-bottom: 1px solid rgba(247, 241, 223, 0.12);
+        border-bottom: 1px solid var(--line);
+        margin-bottom: 18px;
     }
 
     .stTabs [data-baseweb="tab"] {
-        background-color: rgba(247, 241, 223, 0.04);
-        border: 1px solid rgba(247, 241, 223, 0.08);
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
         border-bottom: none;
-        border-radius: 6px 6px 0 0;
-        padding: 13px 22px;
-        font-weight: 600;
-        color: #9d9a8f;
+        border-radius: 16px 16px 0 0;
+        padding: 13px 20px;
+        color: var(--muted);
+        font-weight: 850;
     }
 
     .stTabs [aria-selected="true"] {
-        background-color: rgba(180, 206, 151, 0.12);
-        color: #f7f1df;
-        border-color: rgba(180, 206, 151, 0.3);
+        background: var(--green-soft);
+        color: var(--text);
+        border-color: rgba(124,255,155,0.35);
     }
 
-    .expert-verdict {
-        border-left: 4px solid #777;
-        padding: 20px;
-        background: rgba(247, 241, 223, 0.045);
-        border-radius: 0 8px 8px 0;
-        margin-bottom: 26px;
-    }
-
-    .buy-verdict { border-left-color: #b4ce97; }
-    .hold-verdict { border-left-color: #d5bf77; }
-    .sell-verdict { border-left-color: #be6a5b; }
-
-    .expert-verdict h4 {
-        font-size: 1.05rem;
-        margin-bottom: 10px;
-    }
-
-    .expert-verdict p {
-        color: #c5c0b4;
-        line-height: 1.6;
-        font-size: 0.95rem;
+    .stRadio [role="radiogroup"] {
+        background: rgba(13,17,19,0.78);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 8px;
+        gap: 8px;
     }
 
     .stTextInput input,
     .stTextArea textarea,
     .stNumberInput input,
     .stSelectbox div[data-baseweb="select"] > div {
-        background-color: rgba(8, 13, 12, 0.95) !important;
-        color: #f7f1df !important;
-        border: 1px solid rgba(247, 241, 223, 0.16) !important;
-        border-radius: 6px !important;
+        background: rgba(13,17,19,0.96) !important;
+        color: var(--text) !important;
+        border: 1px solid rgba(255,255,255,0.12) !important;
+        border-radius: 16px !important;
+        min-height: 48px;
+    }
+
+    .stTextInput input:focus,
+    .stTextArea textarea:focus {
+        border-color: rgba(124,255,155,0.55) !important;
+        box-shadow: 0 0 0 3px rgba(124,255,155,0.12) !important;
     }
 
     .stButton button,
     .stDownloadButton button {
-        background: #b4ce97;
-        color: #06100d;
-        border: none;
-        border-radius: 6px;
+        background: var(--green);
+        color: #041009;
+        border: 0;
+        border-radius: 999px;
+        padding: 0.75rem 1.25rem;
+        font-weight: 950;
+        letter-spacing: 0.02em;
         text-transform: uppercase;
-        letter-spacing: 1px;
-        font-weight: 800;
-        padding: 10px 22px;
+        box-shadow: 0 12px 30px rgba(124,255,155,0.18);
     }
 
     .stButton button:hover,
     .stDownloadButton button:hover {
-        background: #d4e7bb;
-        color: #06100d;
+        background: #a8ffba;
+        color: #041009;
     }
 
     .stDataFrame {
-        border: 1px solid rgba(247, 241, 223, 0.12);
-        border-radius: 8px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
         overflow: hidden;
+        background: rgba(13,17,19,0.9);
+    }
+
+    div[data-testid="stMetric"] {
+        background: rgba(13,17,19,0.86);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 16px;
     }
 
     hr {
-        border-color: rgba(247, 241, 223, 0.12);
-        margin: 34px 0;
+        border: none;
+        border-top: 1px solid var(--line);
+        margin: 30px 0;
+    }
+
+    @media (max-width: 768px) {
+        .block-container {
+            padding-top: 5.8rem !important;
+        }
+
+        .terminal-shell {
+            padding: 18px;
+            border-radius: 18px;
+        }
+
+        .hero-title {
+            font-size: 2.45rem;
+        }
+
+        .score-val {
+            font-size: 4rem;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
 
-
+# ==============================================================================
+# UNIVERS DE SELECTION
+# ==============================================================================
 TOP_ACTIONS = [
     "AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "BRK-B", "JPM", "V", "MA",
     "LLY", "UNH", "XOM", "PG", "COST", "HD", "ASML", "SAP", "RMS.PA", "MC.PA",
@@ -222,8 +379,8 @@ TOP_ACTIONS = [
 
 TOP_SMALL_CAPS = [
     "CELH", "ENPH", "FIVE", "HALO", "UFPI", "MEDP", "SPSC", "QLYS", "MMSI", "BOOT",
-    "EXLS", "LNTH", "TMDX", "ALRM", "ITRI", "WING", "SMCI", "NXT", "FN", "CVLT",
-    "IPAR", "AKE.PA", "BEN.PA", "VIRP.PA", "ALCJ.PA", "IDL.PA"
+    "EXLS", "LNTH", "TMDX", "ALRM", "ITRI", "WING", "NXT", "FN", "CVLT", "IPAR",
+    "AKE.PA", "BEN.PA", "VIRP.PA", "ALCJ.PA", "IDL.PA"
 ]
 
 TOP_ETFS = [
@@ -232,17 +389,18 @@ TOP_ETFS = [
     "PAEEM.PA", "PUST.PA", "MSE.PA"
 ]
 
-
+# ==============================================================================
+# OUTILS
+# ==============================================================================
 @st.cache_data(ttl=3600)
 def get_fx_rate(currency_code):
     if not currency_code or not isinstance(currency_code, str):
         return 1.0
 
     curr = currency_code.upper().strip()
-    is_pence = False
+    is_pence = curr in ["GBX", "GBP=X", "GBPp".upper()]
 
-    if curr in ["GBP", "GBX", "GBP=X", "GBP"]:
-        is_pence = curr == "GBX"
+    if curr in ["GBX", "GBP=X", "GBP"]:
         curr = "GBP"
 
     if curr == "EUR":
@@ -271,23 +429,30 @@ def get_fx_rate(currency_code):
 
 
 def safe_float(val, multiplier=1.0, precision=2):
-    if val is None or pd.isna(val) or val == "":
+    if val is None or val == "":
         return None
     try:
+        if pd.isna(val):
+            return None
         return round(float(val) * multiplier, precision)
     except Exception:
         return None
 
 
 def safe_str(val):
-    if val is None or pd.isna(val) or val == "":
+    if val is None or val == "":
         return "N/A"
+    try:
+        if pd.isna(val):
+            return "N/A"
+    except Exception:
+        pass
     return str(val)
 
 
 def format_metric(val, suffix=""):
     if val is None:
-        return "<span class='fin-na'>—</span>"
+        return "<span class='fin-na'>-</span>"
     if isinstance(val, str) and val.lower() == "cash positif":
         return "<span class='fin-cash'>CASH POSITIF</span>"
     if isinstance(val, str):
@@ -316,14 +481,44 @@ def calculer_rsi(data, window=14):
     return 100 - (100 / (1 + rs))
 
 
+def numeric_df_for_display(df):
+    clean = df.copy()
+    for col in clean.columns:
+        if col not in ["Ticker", "TICKER", "Nom", "NOM", "Type", "TYPE", "Régime"]:
+            clean[col] = pd.to_numeric(clean[col], errors="coerce")
+    return clean
+
+
+def format_dataframe(df):
+    formatters = {}
+    for col in df.columns:
+        if col.upper() in ["SCORE"]:
+            formatters[col] = "{:.0f}"
+        elif any(key in col for key in ["Prix", "PRIX", "PER", "ROE", "Marge", "MARGE", "FRAIS", "TER", "DETTE"]):
+            formatters[col] = "{:.2f}"
+        elif any(key in col for key in ["Market", "MARKET", "AUM", "Cap", "CAP"]):
+            formatters[col] = "{:.0f}"
+    return df.style.format(formatters, na_rep="-")
+
+
+# ==============================================================================
+# DATA
+# ==============================================================================
 @st.cache_data(ttl=600)
 def fetch_info_with_retry(ticker_symbol, retries=3, backoff=1):
     for attempt in range(retries):
         try:
             tk = yf.Ticker(ticker_symbol)
             info = tk.info
-            if info and ("symbol" in info or "regularMarketPrice" in info or "currentPrice" in info or "previousClose" in info):
+
+            if info and (
+                "symbol" in info
+                or "regularMarketPrice" in info
+                or "currentPrice" in info
+                or "previousClose" in info
+            ):
                 return info
+
             time.sleep(backoff)
             backoff *= 2
         except Exception:
@@ -331,6 +526,7 @@ def fetch_info_with_retry(ticker_symbol, retries=3, backoff=1):
                 return None
             time.sleep(backoff)
             backoff *= 2
+
     return None
 
 
@@ -381,10 +577,12 @@ def extract_stock_data(info, fx_rate):
     d["Reco"] = reco_raw.replace("_", " ").upper() if isinstance(reco_raw, str) else "N/A"
 
     score = 0
+
     if isinstance(d["Levier"], float) and d["Levier"] < 2:
         score += 15
     elif isinstance(d["Levier"], str) and d["Levier"] == "Cash Positif":
         score += 15
+
     if d["ROE"] is not None and d["ROE"] > 15:
         score += 15
     if d["Marge_Nette"] is not None and d["Marge_Nette"] > 12:
@@ -400,7 +598,7 @@ def extract_stock_data(info, fx_rate):
     if d["Payout"] is not None and 0 < d["Payout"] < 60:
         score += 10
 
-    d["Score"] = score
+    d["Score"] = min(score, 100)
     d["Sector"] = safe_str(info.get("sector")).upper()
     d["Industry"] = safe_str(info.get("industry")).upper()
 
@@ -418,12 +616,13 @@ def extract_etf_data(info, ticker_symbol, fx_rate):
     category = str(info.get("category", "")).upper()
 
     d["Distribution"] = "ACCUMULATION" if " ACC" in name or "ACCUM" in name else "DISTRIBUTION"
-    d["Replication"] = "SYNTHÉTIQUE (SWAP)" if "SWAP" in name else "PHYSIQUE"
+    d["Replication"] = "SYNTHETIQUE (SWAP)" if "SWAP" in name else "PHYSIQUE"
 
     is_pea = any(x in name for x in ["AMUNDI", "LYXOR", "BNP", "ISHARES"]) and ".PA" in ticker_symbol.upper()
-    d["PEA"] = "ÉLIGIBLE PEA" if is_pea else "COMPTE-TITRES"
+    d["PEA"] = "ELIGIBLE PEA" if is_pea else "COMPTE-TITRES"
 
     score = 0
+
     if d["AUM"] is not None and d["AUM"] > 500:
         score += 30
     elif d["AUM"] is not None and d["AUM"] > 100:
@@ -449,8 +648,9 @@ def extract_etf_data(info, ticker_symbol, fx_rate):
 
 
 @st.cache_data(ttl=1800)
-def get_morningstar_news(ticker_symbol, company_name):
+def get_press_news(ticker_symbol, company_name):
     news = []
+
     try:
         clean_ticker = ticker_symbol.split(".")[0]
         query = f'"{clean_ticker}" "{company_name}" finance'
@@ -465,7 +665,7 @@ def get_morningstar_news(ticker_symbol, company_name):
                 "title": title,
                 "link": entry.link,
                 "publisher": entry.source.title if hasattr(entry, "source") and hasattr(entry.source, "title") else "Presse",
-                "published": entry.published[5:16] if hasattr(entry, "published") else "Récemment"
+                "published": entry.published[5:16] if hasattr(entry, "published") else "Recent"
             })
     except Exception:
         pass
@@ -476,10 +676,10 @@ def get_morningstar_news(ticker_symbol, company_name):
             if tk_news:
                 for n in tk_news[:5]:
                     news.append({
-                        "title": n.get("title", "Intelligence de marché"),
+                        "title": n.get("title", "Actualite de marche"),
                         "link": n.get("link", "#"),
                         "publisher": n.get("publisher", "Data Feed"),
-                        "published": "Récemment"
+                        "published": "Recent"
                     })
         except Exception:
             pass
@@ -487,24 +687,24 @@ def get_morningstar_news(ticker_symbol, company_name):
     return news
 
 
-def generate_consensus_and_verdict(data, is_etf, nom):
+def generate_consensus_and_verdict(data, is_etf):
     if is_etf:
         score = data.get("Score", 0)
 
         if score >= 70:
-            verdict, color = "ACHAT"
-        elif score >= 50:
-            verdict, color = "CONSERVATION", "hold-verdict"
-        else:
-            verdict, color = "SOUS SURVEILLANCE", "sell-verdict"
-
-        if score >= 70:
+            verdict = "ACHAT"
             color = "buy-verdict"
+        elif score >= 50:
+            verdict = "CONSERVATION"
+            color = "hold-verdict"
+        else:
+            verdict = "SOUS SURVEILLANCE"
+            color = "sell-verdict"
 
         return f"""
         <div class="expert-verdict {color}">
-            <h4>Verdict stratégique : {verdict}</h4>
-            <p>Score ETF : {score}/100. Actifs sous gestion : {format_metric(data.get("AUM"), "M€")}. Frais : {format_metric(data.get("TER"), "%")}. Réplication : {data.get("Replication", "N/A")}. Fiscalité : {data.get("PEA", "N/A")}.</p>
+            <h4>Verdict strategique : {verdict}</h4>
+            <p>Score ETF : {score}/100. Actifs sous gestion : {format_metric(data.get("AUM"), "M€")}. Frais : {format_metric(data.get("TER"), "%")}. Replication : {data.get("Replication", "N/A")}. Fiscalite : {data.get("PEA", "N/A")}.</p>
         </div>
         """
 
@@ -512,18 +712,24 @@ def generate_consensus_and_verdict(data, is_etf, nom):
     reco = data.get("Reco", "N/A").upper()
 
     if score >= 65 and "BUY" in reco:
-        verdict, color = "ACHAT FORT", "buy-verdict"
+        verdict = "ACHAT FORT"
+        color = "buy-verdict"
     elif score >= 50:
-        verdict, color = "ACCUMULATION", "buy-verdict"
+        verdict = "ACCUMULATION"
+        color = "buy-verdict"
     elif score >= 35:
-        verdict, color = "CONSERVATION", "hold-verdict"
+        verdict = "CONSERVATION"
+        color = "hold-verdict"
     else:
-        verdict, color = "LIQUIDATION", "sell-verdict"
+        verdict = "LIQUIDATION"
+        color = "sell-verdict"
+
+    valorisation = "attractive" if data.get("Graham") and data.get("Prix") and data["Graham"] > data["Prix"] else "tendue"
 
     return f"""
     <div class="expert-verdict {color}">
-        <h4>Verdict stratégique : {verdict}</h4>
-        <p>Score d'intégrité : {score}/100. Valorisation {'attractive' if data.get("Graham") and data.get("Prix") and data["Graham"] > data["Prix"] else 'tendue'}. ROE : {format_metric(data.get("ROE"), "%")}. Levier : {format_metric(data.get("Levier"), "x")}. Secteur : {data.get("Sector", "N/A")}. Distribution : {format_metric(data.get("Payout"), "%")}.</p>
+        <h4>Verdict strategique : {verdict}</h4>
+        <p>Score d'integrite : {score}/100. Valorisation {valorisation}. ROE : {format_metric(data.get("ROE"), "%")}. Levier : {format_metric(data.get("Levier"), "x")}. Secteur : {data.get("Sector", "N/A")}. Distribution : {format_metric(data.get("Payout"), "%")}.</p>
     </div>
     """
 
@@ -542,6 +748,7 @@ def rank_universe(asset_type, limit=12):
     for ticker in universe:
         try:
             info = fetch_info_with_retry(ticker)
+
             if not info:
                 continue
 
@@ -550,6 +757,7 @@ def rank_universe(asset_type, limit=12):
 
             if asset_type == "ETF" or quote_type == "ETF":
                 d = extract_etf_data(info, ticker, fx)
+
                 rows.append({
                     "Ticker": ticker,
                     "Nom": info.get("shortName", ticker),
@@ -611,10 +819,10 @@ def get_financial_metric_history(ticker_symbol, fx_rate):
 
     metric_map = {
         "Chiffre d'affaires": ["Total Revenue", "Operating Revenue"],
-        "Résultat brut": ["Gross Profit"],
+        "Resultat brut": ["Gross Profit"],
         "EBITDA": ["EBITDA", "Normalized EBITDA"],
-        "Résultat opérationnel": ["Operating Income"],
-        "Résultat net": ["Net Income", "Net Income Common Stockholders"]
+        "Resultat operationnel": ["Operating Income"],
+        "Resultat net": ["Net Income", "Net Income Common Stockholders"]
     }
 
     for label, possible_rows in metric_map.items():
@@ -624,17 +832,19 @@ def get_financial_metric_history(ticker_symbol, fx_rate):
                 break
 
     if not balance.empty:
-        for label, possible_rows in {
+        balance_map = {
             "Cash": ["Cash And Cash Equivalents", "Cash Cash Equivalents And Short Term Investments"],
             "Dette totale": ["Total Debt"]
-        }.items():
+        }
+
+        for label, possible_rows in balance_map.items():
             for row_name in possible_rows:
                 if row_name in balance.index:
                     df[label] = balance.loc[row_name].astype(float) * fx_rate / 1_000_000
                     break
 
-    if "Chiffre d'affaires" in df.columns and "Résultat net" in df.columns:
-        df["Marge nette %"] = (df["Résultat net"] / df["Chiffre d'affaires"]) * 100
+    if "Chiffre d'affaires" in df.columns and "Resultat net" in df.columns:
+        df["Marge nette %"] = (df["Resultat net"] / df["Chiffre d'affaires"]) * 100
 
     if "Dette totale" in df.columns and "Cash" in df.columns:
         df["Dette nette"] = df["Dette totale"] - df["Cash"]
@@ -645,23 +855,34 @@ def get_financial_metric_history(ticker_symbol, fx_rate):
     return df.dropna(how="all")
 
 
+# ==============================================================================
+# INTERFACE
+# ==============================================================================
 st.markdown("""
-<div class="terminal-header">
-    <div class="terminal-kicker">Alpha Terminal Pro</div>
-    <div class="terminal-title">Analyse financière institutionnelle</div>
-    <div class="terminal-subtitle">Valorisation, qualité bilancielle, momentum technique, screener et comparateur multi-actifs.</div>
+<div class="terminal-shell">
+    <div class="terminal-topline">
+        <div class="brand-pill"><span class="brand-dot"></span> Alpha Terminal Pro</div>
+        <div class="status-pill">Live Market Data</div>
+    </div>
+    <div class="hero-title">Finance cockpit.</div>
+    <div class="hero-subtitle">
+        Analyse fondamentale, scoring proprietaire, graphiques techniques, presse financiere et comparateur multi-actifs.
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
 mode = st.radio(
     "Module",
-    ["ANALYSE INDIVIDUELLE", "TOP SÉLECTION", "MATRICE COMPARATIVE"],
+    ["ANALYSE INDIVIDUELLE", "TOP SELECTION", "MATRICE COMPARATIVE"],
     label_visibility="collapsed",
     horizontal=True
 )
 
 st.markdown("<br>", unsafe_allow_html=True)
 
+# ==============================================================================
+# ANALYSE INDIVIDUELLE
+# ==============================================================================
 if mode == "ANALYSE INDIVIDUELLE":
     ticker_input = st.text_input(
         "",
@@ -670,11 +891,11 @@ if mode == "ANALYSE INDIVIDUELLE":
     ).upper().strip()
 
     if ticker_input:
-        with st.spinner("Acquisition des données en cours..."):
+        with st.spinner("Acquisition des donnees en cours..."):
             info = fetch_info_with_retry(ticker_input)
 
             if not info:
-                st.error("Impossible de récupérer les données. Vérifie le ticker ou réessaie dans quelques minutes.")
+                st.error("Impossible de recuperer les donnees. Verifie le ticker ou reessaie dans quelques minutes.")
                 st.stop()
 
             nom = info.get("longName", info.get("shortName", ticker_input)).upper()
@@ -683,18 +904,18 @@ if mode == "ANALYSE INDIVIDUELLE":
             is_etf = info.get("quoteType") == "ETF" or "totalAssets" in info
 
             st.markdown(
-                f"<h2>{nom} <span style='color:#8b9188; font-size:1.1rem;'>// {ticker_input}</span></h2>",
+                f"<h2>{nom} <span style='color:#7cff9b; font-size:1.05rem;'>// {ticker_input}</span></h2>",
                 unsafe_allow_html=True
             )
 
-            tabs = st.tabs(["FONDAMENTAUX", "TECHNIQUE", "ÉVOLUTION MÉTRIQUES", "INTELLIGENCE"])
+            tabs = st.tabs(["FONDAMENTAUX", "TECHNIQUE", "EVOLUTION METRIQUES", "PRESSE"])
 
             with tabs[0]:
                 if is_etf:
                     data = extract_etf_data(info, ticker_input, fx_rate)
 
                     if data["AUM"] and data["AUM"] < 100:
-                        st.warning("Liquidité faible : AUM inférieur à 100 M€.")
+                        st.warning("Liquidite faible : AUM inferieur a 100 M€.")
 
                     c1, c2, c3, c4 = st.columns(4)
                     with c1:
@@ -708,29 +929,32 @@ if mode == "ANALYSE INDIVIDUELLE":
 
                     c5, c6, c7 = st.columns(3)
                     with c5:
-                        render_metric_card("Régime fiscal", data["PEA"])
+                        render_metric_card("Regime fiscal", data["PEA"])
                     with c6:
                         render_metric_card("Politique dividende", data["Distribution"])
                     with c7:
-                        render_metric_card("Réplication", data["Replication"])
-
+                        render_metric_card("Replication", data["Replication"])
                 else:
                     data = extract_stock_data(info, fx_rate)
 
-                    c1, c2, c3 = st.columns([1.2, 2, 2])
+                    c1, c2, c3 = st.columns([1.15, 2, 2])
+
                     with c1:
                         st.markdown(
                             f"""
                             <div class="score-container">
-                                <div class="score-title">Score d'intégrité</div>
+                                <div class="score-title">Score d'integrite</div>
                                 <div class="score-val">{data["Score"]}</div>
+                                <div class="score-caption">Notation fondamentale sur 100</div>
                             </div>
                             """,
                             unsafe_allow_html=True
                         )
+
                     with c2:
-                        render_metric_card("Prix marché", format_metric(data["Prix"], "€"))
+                        render_metric_card("Prix marche", format_metric(data["Prix"], "€"))
                         render_metric_card("Consensus target", f"{format_metric(data['Target'], '€')} // {data['Reco']}")
+
                     with c3:
                         render_metric_card("Capitalisation", format_metric(data["MarketCap"], "M€"))
                         render_metric_card("Croissance CA", format_metric(data["Rev_Growth"], "%"))
@@ -749,9 +973,9 @@ if mode == "ANALYSE INDIVIDUELLE":
                         render_metric_card("Valeur Graham", format_metric(data["Graham"], "€"))
 
                     with col_b:
-                        st.markdown("#### Rentabilité")
+                        st.markdown("#### Rentabilite")
                         render_metric_card("Marge brute", format_metric(data["Marge_Brute"], "%"))
-                        render_metric_card("Marge opérationnelle", format_metric(data["Marge_Op"], "%"))
+                        render_metric_card("Marge operationnelle", format_metric(data["Marge_Op"], "%"))
                         render_metric_card("Marge nette", format_metric(data["Marge_Nette"], "%"))
                         render_metric_card("ROE", format_metric(data["ROE"], "%"))
                         render_metric_card("ROA", format_metric(data["ROA"], "%"))
@@ -784,59 +1008,104 @@ if mode == "ANALYSE INDIVIDUELLE":
                         vertical_spacing=0.04
                     )
 
-                    fig.add_trace(go.Scatter(x=hist.index, y=hist["Close_EUR"], name="Prix", line=dict(color="#f7f1df", width=1.8)), row=1, col=1)
-                    fig.add_trace(go.Scatter(x=hist.index, y=hist["SMA50"], name="MM50", line=dict(color="#b4ce97", width=1.2)), row=1, col=1)
-                    fig.add_trace(go.Scatter(x=hist.index, y=hist["SMA200"], name="MM200", line=dict(color="#d5bf77", width=1.2)), row=1, col=1)
+                    fig.add_trace(
+                        go.Scatter(
+                            x=hist.index,
+                            y=hist["Close_EUR"],
+                            name="Prix",
+                            line=dict(color="#f5f7f2", width=2)
+                        ),
+                        row=1,
+                        col=1
+                    )
 
-                    fig.add_trace(go.Scatter(x=hist.index, y=hist["RSI"], name="RSI", line=dict(color="#c5c0b4", width=1)), row=2, col=1)
-                    fig.add_hline(y=70, line_color="#be6a5b", line_width=1, row=2, col=1)
-                    fig.add_hline(y=30, line_color="#b4ce97", line_width=1, row=2, col=1)
+                    fig.add_trace(
+                        go.Scatter(
+                            x=hist.index,
+                            y=hist["SMA50"],
+                            name="MM50",
+                            line=dict(color="#7cff9b", width=1.3)
+                        ),
+                        row=1,
+                        col=1
+                    )
+
+                    fig.add_trace(
+                        go.Scatter(
+                            x=hist.index,
+                            y=hist["SMA200"],
+                            name="MM200",
+                            line=dict(color="#7aa7ff", width=1.3)
+                        ),
+                        row=1,
+                        col=1
+                    )
+
+                    fig.add_trace(
+                        go.Scatter(
+                            x=hist.index,
+                            y=hist["RSI"],
+                            name="RSI",
+                            line=dict(color="#b8c0c0", width=1.2)
+                        ),
+                        row=2,
+                        col=1
+                    )
+
+                    fig.add_hline(y=70, line_color="#ff6b6b", line_width=1, row=2, col=1)
+                    fig.add_hline(y=30, line_color="#7cff9b", line_width=1, row=2, col=1)
 
                     fig.update_layout(
                         height=650,
                         template="plotly_dark",
                         margin=dict(l=0, r=0, t=30, b=0),
                         paper_bgcolor="rgba(0,0,0,0)",
-                        plot_bgcolor="rgba(8,13,12,0.88)",
+                        plot_bgcolor="rgba(13,17,19,0.72)",
                         xaxis=dict(showgrid=False),
-                        yaxis=dict(showgrid=True, gridcolor="rgba(247,241,223,0.08)"),
+                        yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.07)"),
                         xaxis2=dict(showgrid=False),
-                        yaxis2=dict(showgrid=True, gridcolor="rgba(247,241,223,0.08)"),
+                        yaxis2=dict(showgrid=True, gridcolor="rgba(255,255,255,0.07)"),
                         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
                     )
 
                     st.plotly_chart(fig, use_container_width=True)
                 else:
-                    st.error("Série temporelle insuffisante.")
+                    st.error("Serie temporelle insuffisante.")
 
             with tabs[2]:
                 if is_etf:
-                    st.info("L'évolution des métriques fondamentales est disponible pour les actions. Pour les ETF, utilise l'onglet Technique.")
+                    st.info("L'evolution des metriques fondamentales est disponible pour les actions. Pour les ETF, utilise l'onglet Technique.")
                 else:
                     metrics_df = get_financial_metric_history(ticker_input, fx_rate)
 
                     if metrics_df.empty:
-                        st.error("Données financières trimestrielles indisponibles pour cet actif.")
+                        st.error("Donnees financieres trimestrielles indisponibles pour cet actif.")
                     else:
                         available_metrics = list(metrics_df.columns)
+                        default_metrics = [
+                            m for m in ["Chiffre d'affaires", "Resultat net", "EBITDA", "Dette nette"]
+                            if m in available_metrics
+                        ]
 
                         selected_metrics = st.multiselect(
-                            "Métriques à afficher",
+                            "Metriques a afficher",
                             available_metrics,
-                            default=[m for m in ["Chiffre d'affaires", "Résultat net", "EBITDA", "Dette nette"] if m in available_metrics]
+                            default=default_metrics
                         )
 
                         if selected_metrics:
                             fig_metrics = go.Figure()
 
-                            for metric in selected_metrics:
+                            colors = ["#7cff9b", "#7aa7ff", "#ffd166", "#ff6b6b", "#f5f7f2", "#9b8cff"]
+
+                            for i, metric in enumerate(selected_metrics):
                                 fig_metrics.add_trace(
                                     go.Scatter(
                                         x=metrics_df.index,
                                         y=metrics_df[metric],
                                         mode="lines+markers",
                                         name=metric,
-                                        line=dict(width=2)
+                                        line=dict(width=2.4, color=colors[i % len(colors)])
                                     )
                                 )
 
@@ -844,44 +1113,46 @@ if mode == "ANALYSE INDIVIDUELLE":
                                 height=560,
                                 template="plotly_dark",
                                 paper_bgcolor="rgba(0,0,0,0)",
-                                plot_bgcolor="rgba(8,13,12,0.88)",
+                                plot_bgcolor="rgba(13,17,19,0.72)",
                                 margin=dict(l=0, r=0, t=30, b=0),
                                 xaxis=dict(showgrid=False),
-                                yaxis=dict(showgrid=True, gridcolor="rgba(247,241,223,0.08)", title="M€ / % selon métrique"),
+                                yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.07)", title="M€ / % selon metrique"),
                                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
                             )
 
                             st.plotly_chart(fig_metrics, use_container_width=True)
 
                         st.dataframe(
-                            metrics_df.sort_index(ascending=False).style.format("{:,.2f}", na_rep="—"),
+                            format_dataframe(metrics_df.sort_index(ascending=False)),
                             use_container_width=True
                         )
 
             with tabs[3]:
-                st.markdown(generate_consensus_and_verdict(data, is_etf, nom), unsafe_allow_html=True)
+                st.markdown(generate_consensus_and_verdict(data, is_etf), unsafe_allow_html=True)
                 st.markdown("<hr>", unsafe_allow_html=True)
-                st.markdown("#### Intelligence de marché")
+                st.markdown("#### Presse financiere")
 
-                news = get_morningstar_news(ticker_input, nom)
+                news = get_press_news(ticker_input, nom)
 
                 if news:
                     for n in news:
                         st.markdown(
                             f"""
-                            <div style="background:rgba(12,18,16,0.86); padding:16px; border:1px solid rgba(247,241,223,0.12); border-left:4px solid #b4ce97; border-radius:0 8px 8px 0; margin-bottom:14px;">
-                                <a href="{n['link']}" target="_blank" style="color:#f7f1df; font-weight:600; text-decoration:none; font-size:1rem;">{n['title']}</a><br>
-                                <span style="color:#8b9188; font-size:0.75rem; text-transform:uppercase; letter-spacing:1px; display:inline-block; margin-top:8px;">{n['publisher']} // {n['published']}</span>
+                            <div style="background:rgba(13,17,19,0.88); padding:18px; border:1px solid rgba(255,255,255,0.10); border-radius:18px; margin-bottom:14px;">
+                                <a href="{n['link']}" target="_blank" style="color:#f5f7f2; font-weight:800; text-decoration:none; font-size:1rem;">{n['title']}</a><br>
+                                <span style="color:#90999a; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em; display:inline-block; margin-top:10px;">{n['publisher']} // {n['published']}</span>
                             </div>
                             """,
                             unsafe_allow_html=True
                         )
                 else:
-                    st.info("Flux d'information indisponible.")
+                    st.info("Flux de presse indisponible.")
 
-
-elif mode == "TOP SÉLECTION":
-    st.markdown("#### Sélection algorithmique")
+# ==============================================================================
+# TOP SELECTION
+# ==============================================================================
+elif mode == "TOP SELECTION":
+    st.markdown("#### Selection algorithmique")
 
     c1, c2 = st.columns([1, 1])
 
@@ -889,71 +1160,78 @@ elif mode == "TOP SÉLECTION":
         asset_type = st.selectbox("Univers", ["ACTIONS", "SMALL CAPS", "ETF"])
 
     with c2:
-        top_limit = st.slider("Nombre de résultats", 5, 20, 10)
+        top_limit = st.slider("Nombre de resultats", 5, 20, 10)
 
     with st.spinner("Classement des meilleurs actifs selon le score /100..."):
         ranking = rank_universe(asset_type, top_limit)
 
     if ranking.empty:
-        st.error("Aucune donnée exploitable pour cet univers.")
+        st.error("Aucune donnee exploitable pour cet univers.")
     else:
+        ranking = numeric_df_for_display(ranking)
         best = ranking.iloc[0]
 
         c1, c2, c3 = st.columns(3)
+
         with c1:
             render_metric_card("Meilleur actif", f"{best['Ticker']}")
+
         with c2:
             render_metric_card("Score", format_metric(best["Score"], "/100"))
+
         with c3:
             render_metric_card("Prix", format_metric(best.get("Prix €"), "€"))
 
         st.markdown("<br>", unsafe_allow_html=True)
 
         st.dataframe(
-            ranking.style
-            .format({
-                "Score": "{:.0f}",
-                "Prix €": "{:.2f}",
-                "Market Cap M€": "{:.0f}",
-                "AUM M€": "{:.0f}",
-                "TER %": "{:.2f}",
-                "PER": "{:.2f}",
-                "ROE %": "{:.2f}",
-                "Marge nette %": "{:.2f}"
-            }, na_rep="—")
-            .background_gradient(subset=["Score"], cmap="YlGn"),
+            format_dataframe(ranking),
             use_container_width=True,
             height=430
         )
 
         fig_rank = go.Figure()
+
         fig_rank.add_trace(
             go.Bar(
                 x=ranking["Ticker"],
                 y=ranking["Score"],
-                marker_color="#b4ce97",
-                text=ranking["Score"],
+                marker=dict(
+                    color=ranking["Score"],
+                    colorscale=[
+                        [0, "#ff6b6b"],
+                        [0.5, "#ffd166"],
+                        [1, "#7cff9b"]
+                    ],
+                    cmin=0,
+                    cmax=100
+                ),
+                text=ranking["Score"].round(0),
                 textposition="outside"
             )
         )
+
         fig_rank.update_layout(
             height=420,
             template="plotly_dark",
             paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(8,13,12,0.88)",
+            plot_bgcolor="rgba(13,17,19,0.72)",
             margin=dict(l=0, r=0, t=24, b=0),
-            yaxis=dict(range=[0, 100], gridcolor="rgba(247,241,223,0.08)", title="Score /100"),
-            xaxis=dict(showgrid=False),
+            yaxis=dict(range=[0, 100], gridcolor="rgba(255,255,255,0.07)", title="Score /100"),
+            xaxis=dict(showgrid=False)
         )
+
         st.plotly_chart(fig_rank, use_container_width=True)
 
-
+# ==============================================================================
+# MATRICE COMPARATIVE
+# ==============================================================================
 elif mode == "MATRICE COMPARATIVE":
     st.markdown("#### Comparateur multi-actifs")
 
     tickers_input = st.text_area(
         "",
-        placeholder="Entre tes tickers séparés par une virgule : AAPL, MSFT, LVMH.PA, CW8.PA",
+        placeholder="Entre tes tickers separes par une virgule : AAPL, MSFT, LVMH.PA, CW8.PA",
         label_visibility="collapsed",
         height=90
     ).upper()
@@ -971,7 +1249,7 @@ elif mode == "MATRICE COMPARATIVE":
 
     if tickers_input:
         if st.button("Comparer les actifs"):
-            with st.spinner("Acquisition et comparaison des données..."):
+            with st.spinner("Acquisition et comparaison des donnees..."):
                 t_list = [t.strip().upper() for t in tickers_input.replace("\n", ",").split(",") if t.strip()]
                 res = []
 
@@ -982,6 +1260,7 @@ elif mode == "MATRICE COMPARATIVE":
                         info = fetch_info_with_retry(t)
 
                         if not info:
+                            progress_bar.progress((i + 1) / len(t_list))
                             continue
 
                         fx = get_fx_rate(info.get("currency", "USD"))
@@ -989,6 +1268,7 @@ elif mode == "MATRICE COMPARATIVE":
 
                         if is_etf:
                             d = extract_etf_data(info, t, fx)
+
                             res.append({
                                 "TICKER": t,
                                 "NOM": info.get("shortName", t),
@@ -1004,6 +1284,7 @@ elif mode == "MATRICE COMPARATIVE":
                             })
                         else:
                             d = extract_stock_data(info, fx)
+
                             res.append({
                                 "TICKER": t,
                                 "NOM": info.get("shortName", t),
@@ -1026,6 +1307,7 @@ elif mode == "MATRICE COMPARATIVE":
 
                 if res:
                     df = pd.DataFrame(res)
+                    df = numeric_df_for_display(df)
                     df = df[df["SCORE"] >= min_score]
 
                     if df.empty:
@@ -1033,29 +1315,51 @@ elif mode == "MATRICE COMPARATIVE":
                         st.stop()
 
                     if sort_metric in df.columns:
-                        df = df.sort_values(by=sort_metric, ascending=False)
+                        df = df.sort_values(by=sort_metric, ascending=False, na_position="last")
 
-                    styled_df = df.style.format({
-                        "SCORE": "{:.0f}",
-                        "PRIX (€)": "{:.2f}",
-                        "MARKET CAP / AUM (M€)": "{:.0f}",
-                        "PER": "{:.2f}",
-                        "ROE (%)": "{:.2f}",
-                        "MARGE NETTE (%)": "{:.2f}",
-                        "DETTE/EBITDA": "{:.2f}",
-                        "FRAIS (%)": "{:.2f}"
-                    }, na_rep="—").background_gradient(subset=["SCORE"], cmap="YlGn")
+                    c1, c2, c3, c4 = st.columns(4)
+                    with c1:
+                        render_metric_card("Actifs compares", str(len(df)))
+                    with c2:
+                        render_metric_card("Meilleur score", format_metric(df["SCORE"].max(), "/100"))
+                    with c3:
+                        render_metric_card("Score moyen", format_metric(df["SCORE"].mean(), "/100"))
+                    with c4:
+                        render_metric_card("Leader", str(df.iloc[0]["TICKER"]))
 
-                    st.dataframe(styled_df, use_container_width=True, height=460)
+                    st.dataframe(
+                        format_dataframe(df),
+                        use_container_width=True,
+                        height=460
+                    )
 
                     if show_chart == "Score":
                         fig = go.Figure()
-                        fig.add_trace(go.Bar(x=df["TICKER"], y=df["SCORE"], marker_color="#b4ce97"))
+
+                        fig.add_trace(
+                            go.Bar(
+                                x=df["TICKER"],
+                                y=df["SCORE"],
+                                marker=dict(
+                                    color=df["SCORE"],
+                                    colorscale=[
+                                        [0, "#ff6b6b"],
+                                        [0.5, "#ffd166"],
+                                        [1, "#7cff9b"]
+                                    ],
+                                    cmin=0,
+                                    cmax=100
+                                )
+                            )
+                        )
+
                         fig.update_yaxes(range=[0, 100], title="Score /100")
 
                     elif show_chart == "Score vs PER":
                         chart_df = df.dropna(subset=["PER"])
+
                         fig = go.Figure()
+
                         fig.add_trace(
                             go.Scatter(
                                 x=chart_df["PER"],
@@ -1063,15 +1367,18 @@ elif mode == "MATRICE COMPARATIVE":
                                 mode="markers+text",
                                 text=chart_df["TICKER"],
                                 textposition="top center",
-                                marker=dict(size=14, color="#b4ce97")
+                                marker=dict(size=16, color="#7cff9b", line=dict(color="#f5f7f2", width=1))
                             )
                         )
+
                         fig.update_xaxes(title="PER")
                         fig.update_yaxes(range=[0, 100], title="Score /100")
 
                     else:
                         chart_df = df.dropna(subset=["MARGE NETTE (%)"])
+
                         fig = go.Figure()
+
                         fig.add_trace(
                             go.Scatter(
                                 x=chart_df["MARGE NETTE (%)"],
@@ -1079,9 +1386,10 @@ elif mode == "MATRICE COMPARATIVE":
                                 mode="markers+text",
                                 text=chart_df["TICKER"],
                                 textposition="top center",
-                                marker=dict(size=14, color="#b4ce97")
+                                marker=dict(size=16, color="#7cff9b", line=dict(color="#f5f7f2", width=1))
                             )
                         )
+
                         fig.update_xaxes(title="Marge nette (%)")
                         fig.update_yaxes(range=[0, 100], title="Score /100")
 
@@ -1089,21 +1397,21 @@ elif mode == "MATRICE COMPARATIVE":
                         height=440,
                         template="plotly_dark",
                         paper_bgcolor="rgba(0,0,0,0)",
-                        plot_bgcolor="rgba(8,13,12,0.88)",
+                        plot_bgcolor="rgba(13,17,19,0.72)",
                         margin=dict(l=0, r=0, t=24, b=0),
                         xaxis=dict(showgrid=False),
-                        yaxis=dict(gridcolor="rgba(247,241,223,0.08)")
+                        yaxis=dict(gridcolor="rgba(255,255,255,0.07)")
                     )
 
                     st.plotly_chart(fig, use_container_width=True)
 
                     csv = df.to_csv(index=False).encode("utf-8")
+
                     st.download_button(
                         "Exporter la matrice CSV",
                         data=csv,
                         file_name="alpha_matrix.csv",
                         mime="text/csv"
                     )
-
                 else:
-                    st.error("Échec total de l'extraction.")
+                    st.error("Echec total de l'extraction.")
