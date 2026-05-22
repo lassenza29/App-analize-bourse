@@ -1,175 +1,182 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
-import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from datetime import datetime, timedelta
 import math
 import feedparser
 import urllib.parse
 import time
+import json
 
 # ==============================================================================
-# 1. CONFIGURATION ET DESIGN UI/UX (STYLE PHOTO LIGHT/PRO)
+# CONFIGURATION DE LA PAGE & DESIGN CLAIR (UI MODERNE ET STANDARD)
 # ==============================================================================
-st.set_page_config(page_title="Terminal Financier Pro", page_icon="🏛️", layout="wide")
+st.set_page_config(
+    page_title="Terminal d'Analyse Financière",
+    page_icon="📈",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# Design personnalisé via CSS pour style "Light / Pro / Cold"
+# Un peu de CSS léger pour espacer proprement les métriques sans en faire trop
 st.markdown("""
 <style>
-    /* Global Styles */
-    .stApp { background-color: #fdfdfd; color: #212121; }
-    h1, h2, h3, h4, h5 { color: #1a1a1a !important; font-weight: 300 !important; letter-spacing: -0.5px; }
-    
-    /* Metrics Cards - Style "Light / Bloomberg" */
-    .stMetric {
-        background-color: #ffffff;
-        border: 1px solid #e0e0e0;
-        border-radius: 4px;
-        padding: 15px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    }
-    
-    /* Score Container */
-    .score-container {
-        text-align: center;
-        padding: 20px;
-        background-color: #ffffff;
-        border-radius: 4px;
-        border: 1px solid #e0e0e0;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    }
-    .score-title { font-size: 1rem; color: #616161; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
-    .score-val { font-size: 3.5rem; font-weight: 800; color: #1a73e8; line-height: 1; }
-    
-    /* Tabs style minimaliste */
-    .stTabs [data-baseweb="tab-list"] { gap: 10px; border-bottom: 1px solid #e0e0e0; }
-    .stTabs [data-baseweb="tab"] { background-color: transparent; border: none; padding: 10px 15px; color: #616161; }
-    .stTabs [aria-selected="true"] { background-color: #f1f3f4; color: #1a73e8; border-bottom: 2px solid #1a73e8; }
-    
-    /* News style minimaliste */
-    .news-box {
-        background-color: #ffffff;
-        padding: 15px;
-        border-left: 3px solid #1a73e8;
-        border-radius: 0 4px 4px 0;
-        margin-bottom: 10px;
-        border: 1px solid #e0e0e0;
-    }
+    .block-container { padding-top: 2rem; padding-bottom: 2rem; }
+    h1, h2, h3 { color: #1f77b4; font-weight: 600; }
+    hr { margin: 20px 0; }
 </style>
 """, unsafe_allow_html=True)
 
 
 # ==============================================================================
-# 2. MOTEUR DE CALCULS ET CONVERSION
+# MOTEUR DE TRAITEMENT ET CONVERSION (CORRECTION DU CACHE STREAMLIT)
 # ==============================================================================
 @st.cache_data(ttl=3600)
 def get_fx_rate(currency_code):
-    """Récupère le taux de change vers l'Euro pour afficher tout en €"""
-    if not currency_code or not isinstance(currency_code, str): return 1.0
+    if not currency_code or not isinstance(currency_code, str):
+        return 1.0
     curr = currency_code.upper().strip()
     is_pence = False
-    if curr in ["GBP", "GBX", "GBp"]:
-        is_pence = (curr in ["GBX", "GBp"]); curr = "GBP"
-    if curr == "EUR": return 0.01 if is_pence else 1.0
-    
-    fallbacks = {"USD": 0.92, "GBP": 1.17, "CHF": 1.03, "CAD": 0.68, "JPY": 0.006}
+    if curr in ["GBP", "GBX", "GBP=X", "GBp"]:
+        is_pence = (curr in ["GBX", "GBp"])
+        curr = "GBP"
+    if curr == "EUR":
+        return 0.01 if is_pence else 1.0
+
+    fallbacks = {"USD": 0.92, "GBP": 1.17, "CHF": 1.03, "CAD": 0.68, "JPY": 0.006, "AUD": 0.60, "CNY": 0.13}
     try:
         data = yf.Ticker(f"{curr}EUR=X").history(period="1d")
         if not data.empty:
             rate = float(data['Close'].iloc[-1])
             return (rate * 0.01) if is_pence else rate
-    except Exception: pass
-    return (fallbacks.get(curr, 1.0) * 0.01) if is_pence else fallbacks.get(curr, 1.0)
+    except Exception:
+        pass
+    rate = fallbacks.get(curr, 1.0)
+    return (rate * 0.01) if is_pence else rate
 
 def safe_float(val, multiplier=1.0, precision=2):
     if val is None or pd.isna(val) or val == "": return None
     try: return round(float(val) * multiplier, precision)
     except Exception: return None
 
+def safe_str(val):
+    if val is None or pd.isna(val) or val == "": return "N/A"
+    return str(val)
+
+def format_metric(val, suffix="", default="N/A"):
+    if val is None: return default
+    if isinstance(val, str): return val
+    formatted = f"{val:,.2f}".replace(",", " ")
+    return f"{formatted} {suffix}".strip()
+
 def calculer_rsi(data, window=14):
-    """Calcule le Relative Strength Index (RSI)"""
     delta = data.diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=window).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=window).mean()
     rs = gain / loss
     return 100 - (100 / (1 + rs))
 
+# ==============================================================================
+# ABSTRACTION DES DONNÉES & CALCULS FONCTIONNELS
+# ==============================================================================
 
-# ==============================================================================
-# 3. MOTEUR DE TRAITEMENT DONNÉES (ACTION/ETF/SMALL CAPS/SCORING)
-# ==============================================================================
 @st.cache_data(ttl=600)
-def extract_master_data(ticker_symbol):
-    ticker = yf.Ticker(ticker_symbol)
-    try: info = ticker.info
-    except Exception: return None
-    
-    devise = info.get('currency', 'EUR')
-    fx_rate = get_fx_rate(devise)
-    is_etf = info.get('quoteType') == 'ETF' or 'totalAssets' in info
+def fetch_info_with_retry(ticker_symbol, retries=3, backoff=1):
+    """
+    CORRECTION DU BUG DE CACHE : 
+    On convertit le dictionnaire de yfinance en texte JSON puis on le recharge.
+    Cela détruit tous les objets complexes non-sérialisables qui font planter Streamlit.
+    """
+    for attempt in range(retries):
+        try:
+            tk = yf.Ticker(ticker_symbol)
+            info = tk.info
+            if info and ('symbol' in info or 'regularMarketPrice' in info or 'currentPrice' in info):
+                # Nettoyage strict pour le cache de Streamlit
+                clean_info = json.loads(json.dumps(info, default=str))
+                return clean_info
+            time.sleep(backoff)
+            backoff *= 2
+        except Exception:
+            if attempt == retries - 1:
+                return None
+            time.sleep(backoff)
+            backoff *= 2
+    return None
 
+def extract_stock_data(info, fx_rate):
     d = {}
-    d['info'] = info
-    d['ticker'] = ticker
-    d['is_etf'] = is_etf
-    d['nom'] = info.get('longName', info.get('shortName', ticker_symbol))
-    d['cap'] = safe_float(info.get('marketCap', info.get('totalAssets', 0)), fx_rate / 1_000_000)
+    d['Prix'] = safe_float(info.get('currentPrice') or info.get('regularMarketPrice') or info.get('previousClose'), fx_rate)
+    d['PER_Actuel'] = safe_float(info.get('trailingPE'))
+    d['PER_Futur'] = safe_float(info.get('forwardPE'))
+    d['PS'] = safe_float(info.get('priceToSalesTrailing12Months'))
+    d['PB'] = safe_float(info.get('priceToBook'))
+    d['EV_EBITDA'] = safe_float(info.get('enterpriseToEbitda'))
+    d['BPA'] = safe_float(info.get('trailingEps'), fx_rate)
+    d['BVPS'] = safe_float(info.get('bookValue'), fx_rate)
     
-    if is_etf:
-        d['ter'] = safe_float(info.get('annualReportExpenseRatio'), 100)
-    else:
-        # Bilan
-        treso = safe_float(info.get('totalCash'), fx_rate / 1_000_000)
-        dette_b = safe_float(info.get('totalDebt'), fx_rate / 1_000_000)
-        ebitda = safe_float(info.get('ebitda'), fx_rate / 1_000_000)
-        dette_n = dette_b - treso if treso is not None and dette_b is not None else None
-        
-        if ebitda and ebitda > 0:
-            d['levier'] = "Cash Positif" if dette_n < 0 else round(dette_n / ebitda, 2)
-        else: d['levier'] = None
-        
-        d['roe'] = safe_float(info.get('returnOnEquity'), 100)
-        d['marge_nette'] = safe_float(info.get('profitMargins'), 100)
-        
-        # Graham
-        bna = safe_float(info.get('trailingEps'), fx_rate)
-        actif_net_a = safe_float(info.get('bookValue'), fx_rate)
-        if bna and actif_net_a and bna > 0 and actif_net_a > 0:
-            d['graham'] = round(math.sqrt(22.5 * bna * actif_net_a), 2)
-        else: d['graham'] = None
-        
-        d['per'] = safe_float(info.get('trailingPE'))
-        d['current_ratio'] = safe_float(info.get('currentRatio'))
-        d['rev_growth'] = safe_float(info.get('revenueGrowth'), 100)
-        d['payout'] = safe_float(info.get('payoutRatio'), 100)
-        d['target'] = safe_float(info.get('targetMeanPrice'), fx_rate)
-        d['prix'] = safe_float(info.get('currentPrice'), fx_rate)
+    if d['BPA'] and d['BVPS'] and (d['BPA'] * d['BVPS']) > 0:
+        d['Graham'] = round(math.sqrt(22.5 * d['BPA'] * d['BVPS']), 2)
+    else: d['Graham'] = None
 
-        # SCORING ALGORITHMIQUE (Sur 100)
-        score = 0
-        if d['levier'] is not None and (d['levier'] == "Cash Positif" or d['levier'] < 2.5): score += 15
-        if d['roe'] is not None and d['roe'] > 15: score += 15
-        if d['marge_nette'] is not None and d['marge_nette'] > 12: score += 15
-        if d['graham'] is not None and d['prix'] is not None and d['graham'] > d['prix']: score += 15
-        if d['per'] is not None and 0 < d['per'] < 22: score += 10
-        if d['current_ratio'] is not None and d['current_ratio'] > 1.2: score += 10
-        if d['rev_growth'] is not None and d['rev_growth'] > 5: score += 10
-        if d['payout'] is not None and 0 < d['payout'] < 60: score += 10
-        d['score'] = score
+    d['Marge_Brute'] = safe_float(info.get('grossMargins'), 100)
+    d['Marge_Op'] = safe_float(info.get('operatingMargins'), 100)
+    d['Marge_Nette'] = safe_float(info.get('profitMargins'), 100)
+    d['ROE'] = safe_float(info.get('returnOnEquity'), 100)
+    d['ROA'] = safe_float(info.get('returnOnAssets'), 100)
+
+    treso = safe_float(info.get('totalCash'), fx_rate / 1_000_000)
+    dette_totale = safe_float(info.get('totalDebt'), fx_rate / 1_000_000)
+    d['EBITDA'] = safe_float(info.get('ebitda'), fx_rate / 1_000_000)
     
+    d['Dette_Nette'] = (dette_totale - treso) if treso is not None and dette_totale is not None else None
+
+    if d['Dette_Nette'] is not None and d['EBITDA'] and d['EBITDA'] > 0:
+        d['Levier'] = "Cash Positif" if d['Dette_Nette'] < 0 else round(d['Dette_Nette'] / d['EBITDA'], 2)
+    else: d['Levier'] = None
+
+    d['Current_Ratio'] = safe_float(info.get('currentRatio'))
+    d['Quick_Ratio'] = safe_float(info.get('quickRatio'))
+    d['Debt_Equity'] = safe_float(info.get('debtToEquity'))
+    d['Rev_Growth'] = safe_float(info.get('revenueGrowth'), 100)
+    d['Payout'] = safe_float(info.get('payoutRatio'), 100)
+    d['Target'] = safe_float(info.get('targetMeanPrice'), fx_rate)
+    
+    reco_raw = info.get('recommendationKey', 'N/A')
+    d['Reco'] = reco_raw.replace('_', ' ').upper() if isinstance(reco_raw, str) else 'N/A'
+    
+    score = 0
+    if isinstance(d['Levier'], float) and d['Levier'] < 2: score += 15
+    elif isinstance(d['Levier'], str) and d['Levier'] == "Cash Positif": score += 15
+    if d['ROE'] is not None and d['ROE'] > 15: score += 15
+    if d['Marge_Nette'] is not None and d['Marge_Nette'] > 12: score += 15
+    if d['Graham'] is not None and d['Prix'] is not None and d['Graham'] > d['Prix']: score += 15
+    if d['PER_Actuel'] is not None and 0 < d['PER_Actuel'] < 20: score += 10
+    if d['Current_Ratio'] is not None and d['Current_Ratio'] > 1.2: score += 10
+    if d['Rev_Growth'] is not None and d['Rev_Growth'] > 5: score += 10
+    d['Score'] = score
+
     return d
 
-# ==============================================================================
-# 4. MOTEUR D'ACTUALITÉS (RSS Morningstar)
-# ==============================================================================
+def extract_etf_data(info, ticker_symbol, fx_rate):
+    d = {}
+    d['Prix'] = safe_float(info.get('navPrice') or info.get('previousClose') or info.get('regularMarketPrice'), fx_rate)
+    d['TER'] = safe_float(info.get('annualReportExpenseRatio') or info.get('ytdReturn'), 100)
+    d['AUM'] = safe_float(info.get('totalAssets'), fx_rate / 1_000_000)
+    name = str(info.get('longName', '')).upper()
+    d['Distribution'] = "Capitalisation" if " ACC" in name or "ACCUM" in name else "Distribution"
+    d['Replication'] = "Synthétique" if "SWAP" in name else "Physique"
+    is_pea = any(x in name for x in ["AMUNDI", "LYXOR", "BNP"]) and ".PA" in ticker_symbol.upper()
+    d['PEA'] = "Éligible PEA" if is_pea else "Compte-Titres (CTO)"
+    return d
+
 @st.cache_data(ttl=1800)
 def get_morningstar_news(ticker_symbol, company_name):
     news = []
     try:
         clean_ticker = ticker_symbol.split('.')[0]
-        query = f'"{clean_ticker}" OR "{company_name}" site:morningstar.fr'
+        query = f'"{clean_ticker}" (site:morningstar.fr OR site:morningstar.com OR site:lesechos.fr)'
         encoded_query = urllib.parse.quote(query)
         rss_url = f"https://news.google.com/rss/search?q={encoded_query}&hl=fr&gl=FR&ceid=FR:fr"
         
@@ -179,226 +186,186 @@ def get_morningstar_news(ticker_symbol, company_name):
             news.append({
                 'title': title,
                 'link': entry.link,
+                'publisher': entry.source.title if hasattr(entry, 'source') and hasattr(entry.source, 'title') else 'Presse',
                 'published': entry.published[5:16] if hasattr(entry, 'published') else 'Récemment'
             })
     except Exception: pass
     return news
 
 # ==============================================================================
-# 5. PREDEFINITIONS TICKERS (MODELS TOP PICK)
+# INTERFACE PRINCIPALE
 # ==============================================================================
-@st.cache_data(ttl=3600)
-def get_top_picks_df():
-    # Listes définies de manière institutionnelle sur la base de la capitalisation et/ou qualité
-    top_small_caps = ["FDJ.PA", "RCO.PA", "KRI.PA", "MDM.PA", "ALD.PA"]
-    top_etf = ["CW8.PA", "ESE.PA", "WLD.PA", "EURE.PA"]
-    top_stocks = ["LVMH.PA", "OR.PA", "HER.PA", "SU.PA", "AIR.PA", "TTE.PA"]
-    
-    all_picks = []
-    
-    for category, tickers in [("SMALL CAPS (€)", top_small_caps), ("ETFs GLOBAL (€)", top_etf), ("ACTIONS CAC 40", top_stocks)]:
-        for t in tickers:
-            data = extract_master_data(t)
-            if data:
-                entry = {
-                    "Ticker": t, "Nom": data['nom'], "Type": category, 
-                    "Capitalisation (M€)": data['cap'], "Score (/100)": data.get('score', 0)
-                }
-                if data['is_etf']:
-                    entry["PER"] = None; entry["Marge Nette"] = None
-                else:
-                    entry["PER"] = data['per']; entry["Marge Nette"] = data['marge_nette']
-                all_picks.append(entry)
-                
-    df = pd.DataFrame(all_picks)
-    return df
+st.title("Terminal d'Analyse Financière")
 
-# ==============================================================================
-# 6. INTERFACE STREAMLIT PRINCIPALE
-# ==============================================================================
-tabs_top = st.tabs(["📊 ANALYSE INDIVIDUELLE", "⚖️ COMPARATEUR MATRICE"])
+mode = st.radio("Sélectionnez un module :", ["Analyse Individuelle", "Comparateur d'Actifs"], horizontal=True)
+st.markdown("<hr>", unsafe_allow_html=True)
 
-# --- ONGLET 1 : ANALYSE INDIVIDUELLE ---
-with tabs_top[0]:
-    # Sidebar
-    st.sidebar.markdown("### 🔍 SÉLECTEURS DE RÉFÉRENCE")
-    with st.spinner("Actualisation des Top Picks..."):
-        all_picks_df = get_top_picks_df()
-        
-        selected_stock = st.sidebar.selectbox("BEST STOCKS (Scoring)", all_picks_df[all_picks_df['Type'] == "ACTIONS CAC 40"].sort_values(by="Score (/100)", ascending=False)['Ticker'])
-        selected_etf = st.sidebar.selectbox("BEST ETFs (Liquidité/TER)", all_picks_df[all_picks_df['Type'] == "ETFs GLOBAL (€)"].sort_values(by="Score (/100)", ascending=False)['Ticker'])
-        selected_small = st.sidebar.selectbox("BEST SMALL CAPS", all_picks_df[all_picks_df['Type'] == "SMALL CAPS (€)"].sort_values(by="Score (/100)", ascending=False)['Ticker'])
-
-    st.sidebar.markdown("---")
-    ticker_input = st.text_input("RECHERCHE", placeholder="Saisir symbole (ex: AAPL, RMS.PA, CW8.PA)...", value=selected_stock or selected_etf or selected_small or "AAPL").upper().strip()
+if mode == "Analyse Individuelle":
+    ticker_input = st.text_input("Saisissez un Ticker (ex: AAPL, LVMH.PA, MSFT) :").upper().strip()
     
     if ticker_input:
-        with st.spinner("Génération du rapport d'analyse institutionnel..."):
-            d = extract_master_data(ticker_input)
+        with st.spinner("Récupération des données en cours..."):
+            info = fetch_info_with_retry(ticker_input)
             
-            if d:
-                # EN-TÊTE ET SCORE
-                col_head1, col_head2 = st.columns([3, 1])
-                with col_head1:
-                    st.title(f"{d['nom']} <span style='font-size:1.5rem; color:#757575'>| {ticker_input}</span>")
-                    st.markdown(f"Capitalisation : **{d['cap']:,.0f} M€**")
+            if not info:
+                st.error("Impossible de récupérer les données. Vérifiez le symbole ou réessayez plus tard.")
+                st.stop()
                 
-                with col_head2:
-                    if not d['is_etf']:
-                        st.markdown(f'<div class="score-container"><div class="score-title">SCORE FINANCIER</div><div class="score-val">{d["score"]}</div></div>', unsafe_allow_html=True)
+            nom = info.get('longName', info.get('shortName', ticker_input))
+            devise = info.get('currency', 'USD').upper()
+            fx_rate = get_fx_rate(devise)
+            is_etf = info.get('quoteType') == 'ETF' or 'totalAssets' in info
+            
+            st.header(f"{nom} ({ticker_input})")
+            
+            tabs = st.tabs(["📊 Fondamentaux", "📈 Analyse Technique", "📅 Simulation DCA", "📰 Actualités"])
+            
+            with tabs[0]:
+                if is_etf:
+                    data = extract_etf_data(info, ticker_input, fx_rate)
+                    st.subheader("Informations de l'ETF")
+                    c1, c2, c3, c4 = st.columns(4)
+                    c1.metric("Prix Actuel", format_metric(data['Prix'], "€"))
+                    c2.metric("Frais (TER)", format_metric(data['TER'], "%"))
+                    c3.metric("Actifs gérés (AUM)", format_metric(data['AUM'], "M€"))
+                    c4.metric("Régime Fiscal", data['PEA'])
+                    
+                    c5, c6 = st.columns(2)
+                    c5.metric("Politique de Dividende", data['Distribution'])
+                    c6.metric("Méthode de Réplication", data['Replication'])
+                else:
+                    data = extract_stock_data(info, fx_rate)
+                    
+                    # Section Haute - Métriques Clés
+                    st.subheader("Indicateurs Principaux")
+                    c1, c2, c3, c4 = st.columns(4)
+                    c1.metric("Prix Actuel", format_metric(data['Prix'], "€"))
+                    c2.metric("Score d'Investissement", f"{data['Score']}/100")
+                    c3.metric("Croissance CA", format_metric(data['Rev_Growth'], "%"))
+                    c4.metric("Objectif Analystes", format_metric(data['Target'], "€"))
 
-                # ONGLET DE NAVIGATION INTERNE
-                tab_metrics, tab_graph, tab_history, tab_news = st.tabs(["🏢 MÉTRIQUES CLÉS", "📈 ANALYSE TECHNIQUE", "🕰️ HISTORIQUE MÉTRIQUES", "📰 ACTUALITÉS"])
+                    st.markdown("<hr>", unsafe_allow_html=True)
+                    
+                    # Section Détaillée
+                    col_a, col_b, col_c = st.columns(3)
+                    with col_a:
+                        st.markdown("#### Valorisation")
+                        st.metric("PER (Actuel)", format_metric(data['PER_Actuel'], "x"))
+                        st.metric("Price / Sales", format_metric(data['PS'], "x"))
+                        st.metric("Price / Book", format_metric(data['PB'], "x"))
+                        st.metric("Valeur de Graham", format_metric(data['Graham'], "€"))
+                    with col_b:
+                        st.markdown("#### Rentabilité")
+                        st.metric("Marge Nette", format_metric(data['Marge_Nette'], "%"))
+                        st.metric("Marge Opérationnelle", format_metric(data['Marge_Op'], "%"))
+                        st.metric("ROE (Capitaux Propres)", format_metric(data['ROE'], "%"))
+                        st.metric("Payout Ratio", format_metric(data['Payout'], "%"))
+                    with col_c:
+                        st.markdown("#### Santé Financière")
+                        st.metric("Dette / EBITDA", format_metric(data['Levier'], "x"))
+                        st.metric("Dette Nette", format_metric(data['Dette_Nette'], "M€"))
+                        st.metric("Current Ratio", format_metric(data['Current_Ratio']))
+                        st.metric("BPA (EPS)", format_metric(data['BPA'], "€"))
 
-                # --- MÉTRIQUES CLÉS ---
-                with tab_metrics:
-                    if d['is_etf']:
-                        st.header("📊 Fiche d'Identité ETF")
-                        c1, c2, c3, c4 = st.columns(4)
-                        c1.metric("NAV Actuelle (€)", f"{d['info'].get('navPrice', 0):,.2f}")
-                        c2.metric("Frais TER", f"{d['ter']:.2f}%" if d['ter'] else "N/A")
-                        c3.metric("Encours (M€)", f"{d['cap']:,.0f}")
-                        c4.metric("Rendement Yield", f"{safe_float(d['info'].get('trailingAnnualDividendYield'), 100):.2f}%" or "N/A / Acc")
-                    else:
-                        st.header("🏢 Valorisation & Santé (Action)")
-                        c1, c2, c3, c4 = st.columns(4)
-                        c1.metric("Prix Actuel (€)", f"{d['prix']:,.2f}")
-                        c2.metric("PER (x)", f"{d['per']:.2f}" if d['per'] else "N/A")
-                        c3.metric("Marge Nette", f"{d['marge_nette']:.2f}%" if d['marge_nette'] else "N/A")
-                        c4.metric("Dette / EBITDA (x)", f"{d['levier']:.2f}" if isinstance(d['levier'], float) else d['levier'] or "N/A")
+            with tabs[1]:
+                tk_obj = yf.Ticker(ticker_input)
+                hist = tk_obj.history(period="5y")
+                if len(hist) > 200:
+                    hist['Close_EUR'] = hist['Close'] * fx_rate
+                    hist['SMA50'] = hist['Close_EUR'].rolling(50).mean()
+                    hist['SMA200'] = hist['Close_EUR'].rolling(200).mean()
+                    hist['RSI'] = calculer_rsi(hist['Close'])
 
-                        c5, c6, c7, c8 = st.columns(4)
-                        c5.metric("Graham (€)", f"{d['graham']:,.2f}" if d['graham'] else "N/A")
-                        c6.metric("Consensus Target (€)", f"{d['target']:,.2f}" if d['target'] else "N/A")
-                        c7.metric("ROE", f"{d['roe']:.2f}%" if d['roe'] else "N/A")
-                        c8.metric("Revenue Growth", f"{d['rev_growth']:.2f}%" if d['rev_growth'] else "N/A")
+                    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, row_heights=[0.7, 0.3])
+                    
+                    fig.add_trace(go.Scatter(x=hist.index, y=hist['Close_EUR'], name="Prix", line=dict(color="#1f77b4")), row=1, col=1)
+                    fig.add_trace(go.Scatter(x=hist.index, y=hist['SMA50'], name="Moy. 50 jours", line=dict(color="#ff7f0e")), row=1, col=1)
+                    fig.add_trace(go.Scatter(x=hist.index, y=hist['SMA200'], name="Moy. 200 jours", line=dict(color="#2ca02c")), row=1, col=1)
+                    
+                    fig.add_trace(go.Scatter(x=hist.index, y=hist['RSI'], name="RSI", line=dict(color="#7f7f7f")), row=2, col=1)
+                    fig.add_hline(y=70, line_dash="dash", line_color="red", row=2, col=1)
+                    fig.add_hline(y=30, line_dash="dash", line_color="green", row=2, col=1)
 
-                # --- ANALYSE TECHNIQUE ---
-                with tab_graph:
-                    st.header("📈 Graphique Technique Interactif (MM50/MM200 & RSI)")
-                    hist = d['ticker'].history(period="3y")
-                    if len(hist) > 200:
-                        hist['SMA50'] = hist.Close.rolling(50).mean()
-                        hist['SMA200'] = hist.Close.rolling(200).mean()
-                        hist['RSI'] = calculer_rsi(hist.Close)
+                    fig.update_layout(height=600, margin=dict(l=20, r=20, t=40, b=20), hovermode="x unified")
+                    st.plotly_chart(fig, use_container_width=True)
+                else: st.warning("Historique insuffisant pour afficher les graphiques.")
+
+            with tabs[2]:
+                st.markdown("#### Simuler un investissement périodique (DCA)")
+                dc1, dc2 = st.columns(2)
+                mensualite = dc1.number_input("Investissement mensuel (€)", min_value=10, value=500, step=50)
+                duree = dc2.selectbox("Horizon d'investissement", ["1y", "3y", "5y", "10y"], index=2)
+                
+                tk_obj = yf.Ticker(ticker_input)
+                dca_hist = tk_obj.history(period=duree)
+                
+                if not dca_hist.empty and len(dca_hist) > 20:
+                    dca_hist['Close_EUR'] = dca_hist['Close'] * fx_rate
+                    monthly = dca_hist['Close_EUR'].resample('BMS').first().dropna()
+                    
+                    cap_investi, actions = 0, 0
+                    cap_list, val_list = [], []
+                    
+                    for date, price in monthly.items():
+                        actions += mensualite / price
+                        cap_investi += mensualite
+                        cap_list.append(cap_investi)
+                        val_list.append(actions * price)
                         
-                        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, row_heights=[0.7, 0.3], vertical_spacing=0.03)
-                        fig.add_trace(go.Scatter(x=hist.index, y=hist.Close, name="Prix (€)", line=dict(color="#1a73e8", width=1.5)), row=1, col=1)
-                        fig.add_trace(go.Scatter(x=hist.index, y=hist.SMA50, name="MM50 Jours", line=dict(color="#f4b400", width=1, dash='dot')), row=1, col=1)
-                        fig.add_trace(go.Scatter(x=hist.index, y=hist.SMA200, name="MM200 Jours", line=dict(color="#db4437", width=1, dash='dot')), row=1, col=1)
-                        
-                        fig.add_trace(go.Scatter(x=hist.index, y=hist.RSI, name="RSI (14)", line=dict(color="#a142f4", width=1)), row=2, col=1)
-                        fig.add_hline(y=70, line_dash="dash", line_color="#db4437", row=2, col=1)
-                        fig.add_hline(y=30, line_dash="dash", line_color="#0f9d58", row=2, col=1)
-                        
-                        fig.update_layout(xaxis_rangeslider_visible=False, template="plotly_white", height=600, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-                        st.plotly_chart(fig, use_container_width=True)
-                    else: st.warning("Données historiques insuffisantes pour l'analyse technique.")
+                    df_dca = pd.DataFrame({'Date': monthly.index, 'Investi': cap_list, 'Valeur': val_list}).set_index('Date')
+                    val_finale = df_dca['Valeur'].iloc[-1]
+                    pv = val_finale - cap_investi
+                    
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("Capital Total Investi", f"{cap_investi:,.0f} €".replace(',', ' '))
+                    c2.metric("Valeur du Portefeuille", f"{val_finale:,.0f} €".replace(',', ' '))
+                    c3.metric("Plus-Value Nette", f"{pv:,.0f} €".replace(',', ' '), delta=f"{(pv/cap_investi)*100:.2f}%")
+                    
+                    fig_dca = go.Figure()
+                    fig_dca.add_trace(go.Scatter(x=df_dca.index, y=df_dca['Investi'], name="Capital Investi", line=dict(dash='dash', color='gray')))
+                    fig_dca.add_trace(go.Scatter(x=df_dca.index, y=df_dca['Valeur'], name="Valeur Réelle", fill='tozeroy', line=dict(color='#1f77b4')))
+                    fig_dca.update_layout(height=400, hovermode="x unified")
+                    st.plotly_chart(fig_dca, use_container_width=True)
+                else: st.warning("Données historiques insuffisantes pour la modélisation DCA.")
 
-                # --- HISTORIQUE MÉTRIQUES (REMPlACE DCA) ---
-                with tab_history:
-                    if d['is_etf']:
-                        st.header("🕰️ Historique de l'Encours et NAV (ETF)")
-                        hist_5y = d['ticker'].history(period="5y")
-                        if len(hist_5y) > 100:
-                            fig_aum = go.Figure()
-                            fig_aum.add_trace(go.Scatter(x=hist_5y.index, y=hist_5y.Close, name="NAV Actuelle (€)", line=dict(color="#1a73e8")))
-                            fig_aum.update_layout(template="plotly_white", title="Évolution de la NAV (Cours de Clôture, 5 Ans)", yaxis_title="Euros (€)")
-                            st.plotly_chart(fig_aum, use_container_width=True)
-                        else: st.info("Historique de l'encours non disponible pour ce fonds.")
+            with tabs[3]:
+                news = get_morningstar_news(ticker_input, nom)
+                if news:
+                    for n in news:
+                        st.markdown(f"**[{n['title']}]({n['link']})**")
+                        st.caption(f"Source : {n['publisher']} | Date : {n['published']}")
+                        st.markdown("---")
+                else:
+                    st.info("Aucune actualité récente trouvée.")
 
-                    else:
-                        st.header("🕰️ Évolution de la Valorisation et Rentabilité (5 Ans)")
-                        metrics_hist = d['ticker'].history(period="5y")[['Close', 'Volume']]
-                        
-                        # Récupération états financiers historiques si possible
-                        financials = d['ticker'].financials # Compte de résultat
-                        balance = d['ticker'].balance_sheet # Bilan
-
-                        if financials is not None and balance is not None and not financials.empty:
-                            hist_roe, hist_marge = [], []
-                            dates_f = financials.columns
-                            
-                            for date in dates_f:
-                                try:
-                                    net_income = financials.loc['Net Income'].get(date, None)
-                                    revenue = financials.loc['Total Revenue'].get(date, None)
-                                    equity = balance.loc['Total Stockholder Equity'].get(date, None)
-                                    
-                                    if net_income and revenue and equity:
-                                        hist_marge.append(net_income / revenue * 100)
-                                        hist_roe.append(net_income / equity * 100)
-                                except Exception: pass
-
-                            # Graphique évolution marges/ROE
-                            fig_hist = go.Figure()
-                            fig_hist.add_trace(go.Scatter(x=dates_f, y=hist_roe, name="ROE (%)", line=dict(color="#1a73e8", width=2)))
-                            fig_hist.add_trace(go.Scatter(x=dates_f, y=hist_marge, name="Marge Nette (%)", line=dict(color="#109d58", width=2, dash='dash')))
-                            fig_hist.update_layout(template="plotly_white", title="Tendance Rentabilité Historique", yaxis_title="Pourcentage (%)")
-                            st.plotly_chart(fig_hist, use_container_width=True)
-
-                # --- ACTUALITÉS ---
-                with tab_news:
-                    st.header(f"📰 Actualités Morningstar France")
-                    news = get_morningstar_news(ticker_input, d['nom'])
-                    if news:
-                        for n in news:
-                            st.markdown(f"""
-                            <div class="news-box">
-                                <a href="{n['link']}" target="_blank" style="color:#1a73e8; font-weight:bold; text-decoration:none;">{n['title']}</a><br>
-                                <span style="color:#757575; font-size:0.85rem;">Publié le {n['published']}</span>
-                            </div>
-                            """, unsafe_allow_html=True)
-                    else:
-                        st.info("Aucune actualité récente disponible pour cet actif.")
-
-            else:
-                st.error("Échec de l'acquisition des données fondamentales.")
-
-# --- ONGLET 2 : COMPARATEUR MATRICE ---
-with tabs_top[1]:
-    st.header("⚖️ Comparateur Quantitatif Multi-Actifs (Matrice Pro)")
-    st.markdown("Comparez instantanément la valorisation et la rentabilité d'une liste d'actions ou d'ETF.")
+elif mode == "Comparateur d'Actifs":
+    st.markdown("#### Entrez plusieurs tickers pour les comparer")
+    tickers_input = st.text_input("Exemples : AAPL, MSFT, LVMH.PA, TTE.PA").upper()
     
-    # Amélioration UI comparateur : liste plus claire, boutons d'exportation
-    tickers_input = st.text_input("Entrez les symboles séparés par des virgules (ex: AAPL, LVMH.PA, RMS.PA, OR.PA)", value="AAPL, MSFT, LVMH.PA, RMS.PA")
-    lista_tickers = [t.strip().upper() for t in tickers_input.split(",") if t.strip()]
-    
-    col_comp1, col_comp2 = st.columns([3, 1])
-    with col_comp1:
-        if st.button("Lancer la Comparaison Vectorielle"):
-            resultats_comp = []
-            with st.spinner("Analyse quantitative des actifs en Euros..."):
-                for t in lista_tickers:
-                    d = extract_master_data(t)
-                    if d:
-                        res = {
-                            "Ticker": t, "Nom": d['nom'], "Score (/100)": d.get('score', 0),
-                            "Capitalisation (M€)": round(d['cap'], 0), "is_etf": d['is_etf']
-                        }
-                        if not d['is_etf']:
-                            res["Prix Graham (€)"] = d.get('graham', None)
-                            res["PER (x)"] = d.get('per', None)
-                            res["Marge Nette (%)"] = d.get('marge_nette', None)
-                            res["ROE (%)"] = d.get('roe', None)
-                            res["Dette/EBITDA (x)"] = d.get('levier', None) if isinstance(d.get('levier'), float) else None
+    if tickers_input:
+        if st.button("Comparer"):
+            with st.spinner("Analyse des actifs en cours..."):
+                t_list = [t.strip() for t in tickers_input.split(",") if t.strip()]
+                res = []
+                
+                progress_bar = st.progress(0)
+                
+                for i, t in enumerate(t_list):
+                    info = fetch_info_with_retry(t)
+                    if info:
+                        fx = get_fx_rate(info.get('currency', 'USD'))
+                        if info.get('quoteType') == 'ETF':
+                            d = extract_etf_data(info, t, fx)
+                            res.append({'Ticker': t, 'Type': 'ETF', 'Prix (€)': d['Prix'], 'Score': None, 'Dette/EBITDA': None, 'PER': None, 'Marge Nette': None})
                         else:
-                            res["Frais TER"] = d.get('ter', None)
-                        
-                        resultats_comp.append(res)
-            
-            if resultats_comp:
-                df_matrix = pd.DataFrame(resultats_comp)
+                            d = extract_stock_data(info, fx)
+                            res.append({'Ticker': t, 'Type': 'Action', 'Prix (€)': d['Prix'], 'Score': d['Score'], 'Dette/EBITDA': d['Levier'] if isinstance(d['Levier'], (int, float)) else None, 'PER': d['PER_Actuel'], 'Marge Nette': d['Marge_Nette']})
+                    progress_bar.progress((i + 1) / len(t_list))
                 
-                # Formatage et coloration conditionnelle (style gradient Vert pour le score)
-                st.dataframe(
-                    df_matrix.set_index("Ticker").style.background_gradient(subset=['Score (/100)'], cmap='Greens', vmin=0, vmax=100),
-                    use_container_width=True
-                )
+                progress_bar.empty()
                 
-                # Export CSV amélioré
-                st.markdown("---")
-                csv = df_matrix.to_csv(index=False).encode('utf-8')
-                st.download_button(label="📥 Télécharger le rapport de matrice au format CSV", data=csv, file_name="matrice_alpha_engine.csv", mime="text/csv", use_container_width=True)
-            else:
-                st.error("Aucune donnée n'a pu être récupérée pour la comparaison.")
+                if res:
+                    df = pd.DataFrame(res).sort_values(by="Score", ascending=False)
+                    st.dataframe(df, use_container_width=True, hide_index=True)
+                else: 
+                    st.error("Aucune donnée n'a pu être récupérée pour ces tickers.")
