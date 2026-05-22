@@ -965,7 +965,7 @@ st.markdown("""
 
 mode = st.radio(
     "Module",
-    ["ANALYSE INDIVIDUELLE", "TOP SELECTION", "Comparer"],
+    ["ANALYSE INDIVIDUELLE", "TOP SELECTION", "COMPARER"],
     label_visibility="collapsed",
     horizontal=True
 )
