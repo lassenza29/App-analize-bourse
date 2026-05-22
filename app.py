@@ -7,6 +7,7 @@ import math
 import feedparser
 import urllib.parse
 import time
+from numbers import Real
 
 # ==============================================================================
 # CONFIGURATION
@@ -34,9 +35,7 @@ st.markdown("""
         --accent: #6fa8ff;
         --accent-soft: rgba(111,168,255,0.16);
         --green: #53ff9a;
-        --green-soft: rgba(83,255,154,0.13);
         --red: #ff5757;
-        --red-soft: rgba(255,87,87,0.13);
         --yellow: #ffd166;
     }
 
@@ -46,8 +45,8 @@ st.markdown("""
 
     .stApp {
         background:
-            radial-gradient(circle at 18% 8%, rgba(111,168,255,0.22), transparent 30%),
-            radial-gradient(circle at 86% 4%, rgba(71,114,255,0.18), transparent 34%),
+            radial-gradient(circle at 18% 8%, rgba(111,168,255,0.24), transparent 30%),
+            radial-gradient(circle at 86% 4%, rgba(49,96,255,0.20), transparent 34%),
             linear-gradient(180deg, #07101f 0%, #05080e 42%, #030405 100%);
         color: var(--text);
     }
@@ -64,10 +63,6 @@ st.markdown("""
         border-bottom: 1px solid rgba(255,255,255,0.06);
     }
 
-    [data-testid="stToolbar"] {
-        right: 1rem;
-    }
-
     h1, h2, h3, h4, h5 {
         color: var(--text) !important;
         font-weight: 700 !important;
@@ -80,17 +75,9 @@ st.markdown("""
         margin-bottom: 0.9rem !important;
     }
 
-    h3 {
-        font-size: 1.25rem !important;
-    }
-
-    h4 {
-        font-size: 1rem !important;
-    }
-
     .terminal-shell {
         background:
-            radial-gradient(circle at 80% 20%, rgba(111,168,255,0.16), transparent 34%),
+            radial-gradient(circle at 80% 20%, rgba(111,168,255,0.18), transparent 34%),
             linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)),
             rgba(13,17,19,0.86);
         border: 1px solid rgba(255,255,255,0.12);
@@ -125,7 +112,6 @@ st.markdown("""
         font-size: clamp(2.2rem, 5vw, 4.8rem);
         line-height: 0.95;
         font-weight: 850;
-        letter-spacing: 0 !important;
         color: var(--text);
         margin: 0;
     }
@@ -158,14 +144,14 @@ st.markdown("""
     }
 
     .fin-card.metric-positive {
-        border-color: rgba(83,255,154,0.38);
+        border-color: rgba(83,255,154,0.42);
         background:
             linear-gradient(180deg, rgba(83,255,154,0.08), rgba(255,255,255,0.018)),
             rgba(13,17,19,0.94);
     }
 
     .fin-card.metric-negative {
-        border-color: rgba(255,87,87,0.40);
+        border-color: rgba(255,87,87,0.42);
         background:
             linear-gradient(180deg, rgba(255,87,87,0.08), rgba(255,255,255,0.018)),
             rgba(13,17,19,0.94);
@@ -184,7 +170,6 @@ st.markdown("""
         color: var(--text);
         font-size: 1.45rem;
         font-weight: 850;
-        letter-spacing: 0;
         line-height: 1.15;
     }
 
@@ -408,8 +393,7 @@ TOP_ETFS = [
 # ==============================================================================
 # OUTILS
 # ==============================================================================
-@st.cache_data(ttl=3600)
-def get_fx_rate(currency_code):
+def resolve_fx_rate(currency_code):
     if not currency_code or not isinstance(currency_code, str):
         return 1.0
 
@@ -445,6 +429,15 @@ def get_fx_rate(currency_code):
     return rate * 0.01 if is_pence else rate
 
 
+@st.cache_data(ttl=3600)
+def get_fx_rate(currency_code):
+    return resolve_fx_rate(currency_code)
+
+
+def get_fx_rate_live(currency_code):
+    return resolve_fx_rate(currency_code)
+
+
 def safe_float(val, multiplier=1.0, precision=2):
     if val is None or val == "":
         return None
@@ -468,7 +461,7 @@ def safe_str(val):
 
 
 def is_num(val):
-    return isinstance(val, (int, float)) and not isinstance(val, bool) and not pd.isna(val)
+    return isinstance(val, Real) and not isinstance(val, bool) and not pd.isna(val)
 
 
 def format_metric(val, suffix=""):
@@ -549,7 +542,7 @@ def calculer_rsi(data, window=14):
 
 def numeric_df_for_display(df):
     clean = df.copy()
-    text_cols = ["Ticker", "TICKER", "Nom", "NOM", "Type", "TYPE", "Régime"]
+    text_cols = ["Ticker", "TICKER", "Nom", "NOM", "Type", "TYPE", "Régime", "Regime"]
     for col in clean.columns:
         if col not in text_cols:
             clean[col] = pd.to_numeric(clean[col], errors="coerce")
@@ -601,8 +594,7 @@ def format_dataframe(df):
 # ==============================================================================
 # DATA
 # ==============================================================================
-@st.cache_data(ttl=600)
-def fetch_info_with_retry(ticker_symbol, retries=3, backoff=1):
+def fetch_info_live(ticker_symbol, retries=3, backoff=1):
     for attempt in range(retries):
         try:
             tk = yf.Ticker(ticker_symbol)
@@ -625,6 +617,11 @@ def fetch_info_with_retry(ticker_symbol, retries=3, backoff=1):
             backoff *= 2
 
     return None
+
+
+@st.cache_data(ttl=600)
+def fetch_info_with_retry(ticker_symbol, retries=3, backoff=1):
+    return fetch_info_live(ticker_symbol, retries, backoff)
 
 
 def extract_stock_data(info, fx_rate):
@@ -831,7 +828,6 @@ def generate_consensus_and_verdict(data, is_etf):
     """
 
 
-@st.cache_data(ttl=3600)
 def rank_universe(asset_type, limit=12):
     if asset_type == "ACTIONS":
         universe = TOP_ACTIONS
@@ -844,12 +840,12 @@ def rank_universe(asset_type, limit=12):
 
     for ticker in universe:
         try:
-            info = fetch_info_with_retry(ticker)
+            info = fetch_info_live(ticker)
 
             if not info:
                 continue
 
-            fx = get_fx_rate(info.get("currency", "USD"))
+            fx = get_fx_rate_live(info.get("currency", "USD"))
             quote_type = info.get("quoteType", "")
 
             if asset_type == "ETF" or quote_type == "ETF":
@@ -1030,6 +1026,7 @@ if mode == "ANALYSE INDIVIDUELLE":
                         render_metric_card("Politique dividende", data["Distribution"])
                     with c7:
                         render_metric_card("Replication", data["Replication"], "positive" if data["Replication"] == "PHYSIQUE" else None)
+
                 else:
                     data = extract_stock_data(info, fx_rate)
                     score_tone = tone_score(data["Score"])
@@ -1109,49 +1106,10 @@ if mode == "ANALYSE INDIVIDUELLE":
                         vertical_spacing=0.04
                     )
 
-                    fig.add_trace(
-                        go.Scatter(
-                            x=hist.index,
-                            y=hist["Close_EUR"],
-                            name="Prix",
-                            line=dict(color="#f5f7f2", width=2)
-                        ),
-                        row=1,
-                        col=1
-                    )
-
-                    fig.add_trace(
-                        go.Scatter(
-                            x=hist.index,
-                            y=hist["SMA50"],
-                            name="MM50",
-                            line=dict(color="#6fa8ff", width=1.3)
-                        ),
-                        row=1,
-                        col=1
-                    )
-
-                    fig.add_trace(
-                        go.Scatter(
-                            x=hist.index,
-                            y=hist["SMA200"],
-                            name="MM200",
-                            line=dict(color="#53ff9a", width=1.3)
-                        ),
-                        row=1,
-                        col=1
-                    )
-
-                    fig.add_trace(
-                        go.Scatter(
-                            x=hist.index,
-                            y=hist["RSI"],
-                            name="RSI",
-                            line=dict(color="#b8c0c0", width=1.2)
-                        ),
-                        row=2,
-                        col=1
-                    )
+                    fig.add_trace(go.Scatter(x=hist.index, y=hist["Close_EUR"], name="Prix", line=dict(color="#f5f7f2", width=2)), row=1, col=1)
+                    fig.add_trace(go.Scatter(x=hist.index, y=hist["SMA50"], name="MM50", line=dict(color="#6fa8ff", width=1.3)), row=1, col=1)
+                    fig.add_trace(go.Scatter(x=hist.index, y=hist["SMA200"], name="MM200", line=dict(color="#53ff9a", width=1.3)), row=1, col=1)
+                    fig.add_trace(go.Scatter(x=hist.index, y=hist["RSI"], name="RSI", line=dict(color="#b8c0c0", width=1.2)), row=2, col=1)
 
                     fig.add_hline(y=70, line_color="#ff5757", line_width=1, row=2, col=1)
                     fig.add_hline(y=30, line_color="#53ff9a", line_width=1, row=2, col=1)
@@ -1188,15 +1146,10 @@ if mode == "ANALYSE INDIVIDUELLE":
                             if m in available_metrics
                         ]
 
-                        selected_metrics = st.multiselect(
-                            "Metriques a afficher",
-                            available_metrics,
-                            default=default_metrics
-                        )
+                        selected_metrics = st.multiselect("Metriques a afficher", available_metrics, default=default_metrics)
 
                         if selected_metrics:
                             fig_metrics = go.Figure()
-
                             colors = ["#6fa8ff", "#53ff9a", "#ffd166", "#ff5757", "#f5f7f2", "#9b8cff"]
 
                             for i, metric in enumerate(selected_metrics):
@@ -1223,10 +1176,7 @@ if mode == "ANALYSE INDIVIDUELLE":
 
                             st.plotly_chart(fig_metrics, use_container_width=True)
 
-                        st.dataframe(
-                            format_dataframe(metrics_df.sort_index(ascending=False)),
-                            use_container_width=True
-                        )
+                        st.dataframe(format_dataframe(metrics_df.sort_index(ascending=False)), use_container_width=True)
 
             with tabs[3]:
                 st.markdown(generate_consensus_and_verdict(data, is_etf), unsafe_allow_html=True)
@@ -1263,7 +1213,9 @@ elif mode == "TOP SELECTION":
     with c2:
         top_limit = st.slider("Nombre de resultats", 5, 20, 10)
 
-    with st.spinner("Classement des meilleurs actifs selon le score /100..."):
+    st.caption(f"Actualisation live a chaque rechargement de page : {pd.Timestamp.now().strftime('%d/%m/%Y %H:%M:%S')}")
+
+    with st.spinner("Scan live du marche en cours..."):
         ranking = rank_universe(asset_type, top_limit)
 
     if ranking.empty:
@@ -1285,11 +1237,7 @@ elif mode == "TOP SELECTION":
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        st.dataframe(
-            format_dataframe(ranking),
-            use_container_width=True,
-            height=430
-        )
+        st.dataframe(format_dataframe(ranking), use_container_width=True, height=430)
 
         fig_rank = go.Figure()
 
@@ -1428,15 +1376,10 @@ elif mode == "Comparer":
                     with c4:
                         render_metric_card("Leader", str(df.iloc[0]["TICKER"]))
 
-                    st.dataframe(
-                        format_dataframe(df),
-                        use_container_width=True,
-                        height=460
-                    )
+                    st.dataframe(format_dataframe(df), use_container_width=True, height=460)
 
                     if show_chart == "Score":
                         fig = go.Figure()
-
                         fig.add_trace(
                             go.Bar(
                                 x=df["TICKER"],
@@ -1453,14 +1396,11 @@ elif mode == "Comparer":
                                 )
                             )
                         )
-
                         fig.update_yaxes(range=[0, 100], title="Score /100")
 
                     elif show_chart == "Score vs PER":
                         chart_df = df.dropna(subset=["PER"])
-
                         fig = go.Figure()
-
                         fig.add_trace(
                             go.Scatter(
                                 x=chart_df["PER"],
@@ -1471,15 +1411,12 @@ elif mode == "Comparer":
                                 marker=dict(size=16, color="#6fa8ff", line=dict(color="#f5f7f2", width=1))
                             )
                         )
-
                         fig.update_xaxes(title="PER")
                         fig.update_yaxes(range=[0, 100], title="Score /100")
 
                     else:
                         chart_df = df.dropna(subset=["MARGE NETTE (%)"])
-
                         fig = go.Figure()
-
                         fig.add_trace(
                             go.Scatter(
                                 x=chart_df["MARGE NETTE (%)"],
@@ -1490,7 +1427,6 @@ elif mode == "Comparer":
                                 marker=dict(size=16, color="#6fa8ff", line=dict(color="#f5f7f2", width=1))
                             )
                         )
-
                         fig.update_xaxes(title="Marge nette (%)")
                         fig.update_yaxes(range=[0, 100], title="Score /100")
 
