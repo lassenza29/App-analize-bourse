@@ -10,9 +10,6 @@ import time
 import html
 from numbers import Real
 
-# ==============================================================================
-# CONFIGURATION
-# ==============================================================================
 st.set_page_config(
     page_title="Analyseur Bourse",
     page_icon="📈",
@@ -20,21 +17,17 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ==============================================================================
-# DESIGN
-# ==============================================================================
 st.markdown("""
 <style>
     :root {
         --bg: #050607;
         --panel: #0d1113;
-        --panel-soft: #11181b;
-        --panel-light: #172024;
         --text: #f5f7f2;
         --muted: #90999a;
         --line: rgba(255,255,255,0.10);
-        --accent: #6fa8ff;
-        --accent-soft: rgba(111,168,255,0.16);
+        --accent: #2f80ff;
+        --accent-strong: #1f6fff;
+        --accent-soft: rgba(47,128,255,0.20);
         --green: #53ff9a;
         --red: #ff5757;
         --yellow: #ffd166;
@@ -46,9 +39,9 @@ st.markdown("""
 
     .stApp {
         background:
-            radial-gradient(circle at 18% 8%, rgba(111,168,255,0.24), transparent 30%),
-            radial-gradient(circle at 86% 4%, rgba(49,96,255,0.20), transparent 34%),
-            linear-gradient(180deg, #07101f 0%, #05080e 42%, #030405 100%);
+            radial-gradient(circle at 15% 8%, rgba(47,128,255,0.34), transparent 31%),
+            radial-gradient(circle at 86% 5%, rgba(30,95,255,0.30), transparent 35%),
+            linear-gradient(180deg, #07142a 0%, #050914 44%, #030405 100%);
         color: var(--text);
     }
 
@@ -78,7 +71,7 @@ st.markdown("""
 
     .terminal-shell {
         background:
-            radial-gradient(circle at 80% 20%, rgba(111,168,255,0.18), transparent 34%),
+            radial-gradient(circle at 80% 20%, rgba(47,128,255,0.24), transparent 35%),
             linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)),
             rgba(13,17,19,0.86);
         border: 1px solid rgba(255,255,255,0.12);
@@ -97,7 +90,7 @@ st.markdown("""
     }
 
     .status-pill {
-        color: #03101f;
+        color: #f5f7f2;
         background: var(--accent);
         border-radius: 999px;
         padding: 7px 12px;
@@ -106,7 +99,7 @@ st.markdown("""
         text-transform: uppercase;
         letter-spacing: 0.06em;
         white-space: nowrap;
-        box-shadow: 0 10px 30px rgba(111,168,255,0.25);
+        box-shadow: 0 10px 30px rgba(47,128,255,0.35);
     }
 
     .hero-title {
@@ -125,7 +118,15 @@ st.markdown("""
         margin-top: 14px;
     }
 
+    .element-container,
+    [data-testid="column"],
+    .stColumn {
+        overflow: visible !important;
+    }
+
     .fin-card {
+        position: relative;
+        overflow: visible;
         background:
             linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.018)),
             rgba(13,17,19,0.92);
@@ -139,10 +140,32 @@ st.markdown("""
     }
 
     .fin-card:hover {
-        border-color: rgba(111,168,255,0.38);
+        border-color: rgba(47,128,255,0.48);
         background:
-            linear-gradient(180deg, rgba(111,168,255,0.09), rgba(255,255,255,0.018)),
+            linear-gradient(180deg, rgba(47,128,255,0.11), rgba(255,255,255,0.018)),
             rgba(13,17,19,0.96);
+    }
+
+    .fin-card[data-tooltip]:hover::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        z-index: 999999;
+        left: 14px;
+        top: calc(100% + 10px);
+        width: min(360px, 80vw);
+        padding: 13px 14px;
+        border-radius: 14px;
+        background: rgba(3,7,12,0.98);
+        border: 1px solid rgba(47,128,255,0.45);
+        box-shadow: 0 20px 55px rgba(0,0,0,0.55);
+        color: #f5f7f2;
+        font-size: 0.82rem;
+        line-height: 1.45;
+        font-weight: 650;
+        white-space: normal;
+        text-transform: none;
+        letter-spacing: 0;
+        pointer-events: none;
     }
 
     .fin-card.metric-positive {
@@ -200,9 +223,9 @@ st.markdown("""
         text-align: left;
         padding: 24px;
         background:
-            radial-gradient(circle at 80% 20%, rgba(111,168,255,0.26), transparent 34%),
-            linear-gradient(145deg, #17243a, #07101f 72%);
-        border: 1px solid rgba(111,168,255,0.34);
+            radial-gradient(circle at 80% 20%, rgba(47,128,255,0.32), transparent 34%),
+            linear-gradient(145deg, #17294a, #07142a 72%);
+        border: 1px solid rgba(47,128,255,0.42);
         border-radius: 24px;
         min-height: 240px;
         box-shadow: 0 28px 70px rgba(0,0,0,0.34);
@@ -290,7 +313,7 @@ st.markdown("""
     .stTabs [aria-selected="true"] {
         background: var(--accent-soft);
         color: var(--text);
-        border-color: rgba(111,168,255,0.38);
+        border-color: rgba(47,128,255,0.52);
     }
 
     .stRadio [role="radiogroup"] {
@@ -314,27 +337,27 @@ st.markdown("""
 
     .stTextInput input:focus,
     .stTextArea textarea:focus {
-        border-color: rgba(111,168,255,0.65) !important;
-        box-shadow: 0 0 0 3px rgba(111,168,255,0.14) !important;
+        border-color: rgba(47,128,255,0.75) !important;
+        box-shadow: 0 0 0 3px rgba(47,128,255,0.18) !important;
     }
 
     .stButton button,
     .stDownloadButton button {
         background: var(--accent);
-        color: #03101f;
+        color: #f5f7f2;
         border: 0;
         border-radius: 999px;
         padding: 0.75rem 1.25rem;
         font-weight: 950;
         letter-spacing: 0.02em;
         text-transform: uppercase;
-        box-shadow: 0 12px 30px rgba(111,168,255,0.20);
+        box-shadow: 0 12px 30px rgba(47,128,255,0.28);
     }
 
     .stButton button:hover,
     .stDownloadButton button:hover {
-        background: #9bc2ff;
-        color: #03101f;
+        background: #5b9dff;
+        color: #ffffff;
     }
 
     .stDataFrame {
@@ -371,9 +394,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ==============================================================================
-# UNIVERS DE SELECTION
-# ==============================================================================
 TOP_ACTIONS = [
     "AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "BRK-B", "JPM", "V", "MA",
     "LLY", "UNH", "XOM", "PG", "COST", "HD", "ASML", "SAP", "RMS.PA", "MC.PA",
@@ -400,36 +420,30 @@ if "module_choice" not in st.session_state:
 if "analysis_ticker" not in st.session_state:
     st.session_state.analysis_ticker = ""
 
-if "module_radio" not in st.session_state:
-    st.session_state.module_radio = st.session_state.module_choice
-
-# ==============================================================================
-# REFERENTIEL DES RATIOS
-# ==============================================================================
 RATIO_TOOLTIPS = {
-    "PER": "PER (Prix vs profits) : 10 a 20. Tech accepte jusqu'a 30+, cher si > 35.",
-    "PEG": "PEG (PER ajuste a la croissance) : <= 1. Sous-evalue si < 1, cher si > 2.",
-    "PRICE / BOOK": "P/B (Prix vs valeur du patrimoine) : 1 a 2. Tres bas si < 1, cher si > 3.",
-    "P/B": "P/B (Prix vs valeur du patrimoine) : 1 a 2. Tres bas si < 1, cher si > 3.",
-    "PRICE / SALES": "P/S (Prix vs chiffre d'affaires) : < 2. Surevalue si > 5.",
-    "P/S": "P/S (Prix vs chiffre d'affaires) : < 2. Surevalue si > 5.",
-    "EV / EBITDA": "EV / EBITDA (Valeur totale avec dette vs rentabilite brute) : < 10. Plus c'est bas, mieux c'est.",
-    "MARGE OP": "Marge Operationnelle (Efficacite du business) : > 15%.",
-    "MARGE OPERATIONNELLE": "Marge Operationnelle (Efficacite du business) : > 15%.",
-    "MARGE NETTE": "Marge Nette (Benefice reel restant) : > 10%. Luxe et Tech visent > 20%.",
-    "ROE": "ROE (Rendement de l'argent des actionnaires) : > 15%.",
-    "ROCE": "ROCE / ROIC (Rendement global actionnaires + dettes) : > 12%.",
-    "ROIC": "ROCE / ROIC (Rendement global actionnaires + dettes) : > 12%.",
-    "ROA": "ROA (Rentabilite de toutes les machines/actifs) : > 5%.",
-    "LEVIER DETTE": "Dette Nette / EBITDA (Annees pour rembourser la dette) : < 2.5x. Danger si > 4x.",
-    "DETTE NETTE": "Dette Nette / EBITDA (Annees pour rembourser la dette) : < 2.5x. Danger si > 4x.",
-    "DEBT / EQUITY": "Dette / Capitaux Propres (Poids des banques vs actionnaires) : < 1 ou < 100%.",
-    "DETTE / CAPITAUX": "Dette / Capitaux Propres (Poids des banques vs actionnaires) : < 1 ou < 100%.",
-    "CURRENT RATIO": "Current Ratio (Liquidite pour payer les factures a court terme) : > 1.5. Alerte si < 1.",
-    "COUVERTURE": "Couverture des Interets (Capacite a payer les interets de la dette) : > 5x.",
-    "PAYOUT": "Payout Ratio (Part du profit versee en dividende) : 30% a 60%. Danger de coupure si > 80%.",
-    "DIVIDEND YIELD": "Dividend Yield (Rendement annuel du dividende) : 2% a 5%. Piege si > 8%, cours souvent en chute.",
-    "FCF YIELD": "FCF Yield (Rendement du cash reel disponible) : > 5%."
+    "PER": "PER - Prix vs profits. Repere : 10 a 20. Tech accepte jusqu'a 30+. Cher si > 35.",
+    "PEG": "PEG - PER ajuste a la croissance. Repere : <= 1. Sous-evalue si < 1. Cher si > 2.",
+    "PRICE / BOOK": "P/B - Prix vs valeur du patrimoine. Repere : 1 a 2. Tres bas si < 1. Cher si > 3.",
+    "P/B": "P/B - Prix vs valeur du patrimoine. Repere : 1 a 2. Tres bas si < 1. Cher si > 3.",
+    "PRICE / SALES": "P/S - Prix vs chiffre d'affaires. Repere : < 2. Surevalue si > 5.",
+    "P/S": "P/S - Prix vs chiffre d'affaires. Repere : < 2. Surevalue si > 5.",
+    "EV / EBITDA": "EV / EBITDA - Valeur totale avec dette vs rentabilite brute. Repere : < 10. Plus c'est bas, mieux c'est.",
+    "MARGE OP": "Marge Operationnelle - Efficacite du business. Repere : > 15%.",
+    "MARGE OPERATIONNELLE": "Marge Operationnelle - Efficacite du business. Repere : > 15%.",
+    "MARGE NETTE": "Marge Nette - Benefice reel restant. Repere : > 10%. Luxe et Tech visent > 20%.",
+    "ROE": "ROE - Rendement de l'argent des actionnaires. Repere : > 15%.",
+    "ROCE": "ROCE / ROIC - Rendement global actionnaires + dettes. Repere : > 12%.",
+    "ROIC": "ROCE / ROIC - Rendement global actionnaires + dettes. Repere : > 12%.",
+    "ROA": "ROA - Rentabilite de toutes les machines/actifs. Repere : > 5%.",
+    "LEVIER DETTE": "Dette Nette / EBITDA - Annees pour rembourser la dette. Repere : < 2.5x. Danger si > 4x.",
+    "DETTE NETTE": "Dette Nette / EBITDA - Annees pour rembourser la dette. Repere : < 2.5x. Danger si > 4x.",
+    "DEBT / EQUITY": "Dette / Capitaux Propres - Poids des banques vs actionnaires. Repere : < 1 ou < 100%.",
+    "DETTE / CAPITAUX": "Dette / Capitaux Propres - Poids des banques vs actionnaires. Repere : < 1 ou < 100%.",
+    "CURRENT RATIO": "Current Ratio - Liquidite pour payer les factures a court terme. Repere : > 1.5. Alerte si < 1.",
+    "COUVERTURE": "Couverture des Interets - Capacite a payer les interets de la dette. Repere : > 5x.",
+    "PAYOUT": "Payout Ratio - Part du profit versee en dividende. Repere : 30% a 60%. Danger de coupure si > 80%.",
+    "DIVIDEND YIELD": "Dividend Yield - Rendement annuel du dividende. Repere : 2% a 5%. Piege si > 8%, cours souvent en chute.",
+    "FCF YIELD": "FCF Yield - Rendement du cash reel disponible. Repere : > 5%."
 }
 
 
@@ -441,9 +455,6 @@ def get_ratio_tooltip(title):
     return None
 
 
-# ==============================================================================
-# OUTILS
-# ==============================================================================
 def resolve_fx_rate(currency_code):
     if not currency_code or not isinstance(currency_code, str):
         return 1.0
@@ -572,7 +583,7 @@ def tone_graham(graham, price):
 
 def render_metric_card(title, html_value, tone=None, tooltip=None):
     tooltip_text = tooltip if tooltip is not None else get_ratio_tooltip(title)
-    tooltip_attr = f' title="{html.escape(tooltip_text)}"' if tooltip_text else ""
+    tooltip_attr = f' data-tooltip="{html.escape(tooltip_text, quote=True)}"' if tooltip_text else ""
     tone_class = f" metric-{tone}" if tone in ["positive", "negative"] else ""
 
     st.markdown(
@@ -648,7 +659,6 @@ def format_dataframe(df):
 def open_asset_in_analysis(ticker):
     st.session_state.analysis_ticker = str(ticker).upper().strip()
     st.session_state.module_choice = "ANALYSE INDIVIDUELLE"
-    st.session_state.module_radio = "ANALYSE INDIVIDUELLE"
     st.rerun()
 
 
@@ -673,9 +683,6 @@ def render_open_asset_buttons(df, key_prefix):
                 open_asset_in_analysis(ticker)
 
 
-# ==============================================================================
-# DATA
-# ==============================================================================
 def fetch_info_live(ticker_symbol, retries=3, backoff=1):
     for attempt in range(retries):
         try:
@@ -1030,9 +1037,6 @@ def get_financial_metric_history(ticker_symbol, fx_rate):
     return df.dropna(how="all")
 
 
-# ==============================================================================
-# INTERFACE
-# ==============================================================================
 st.markdown("""
 <div class="terminal-shell">
     <div class="terminal-topline">
@@ -1049,7 +1053,6 @@ mode = st.radio(
     "Module",
     MODULES,
     index=MODULES.index(st.session_state.module_choice),
-    key="module_radio",
     label_visibility="collapsed",
     horizontal=True
 )
@@ -1057,9 +1060,6 @@ mode = st.radio(
 st.session_state.module_choice = mode
 st.markdown("<br>", unsafe_allow_html=True)
 
-# ==============================================================================
-# ANALYSE INDIVIDUELLE
-# ==============================================================================
 if mode == "ANALYSE INDIVIDUELLE":
     ticker_input = st.text_input(
         "",
@@ -1082,7 +1082,7 @@ if mode == "ANALYSE INDIVIDUELLE":
             is_etf = info.get("quoteType") == "ETF" or "totalAssets" in info
 
             st.markdown(
-                f"<h2>{nom} <span style='color:#6fa8ff; font-size:1.05rem;'>// {ticker_input}</span></h2>",
+                f"<h2>{nom} <span style='color:#2f80ff; font-size:1.05rem;'>// {ticker_input}</span></h2>",
                 unsafe_allow_html=True
             )
 
@@ -1193,7 +1193,7 @@ if mode == "ANALYSE INDIVIDUELLE":
                     )
 
                     fig.add_trace(go.Scatter(x=hist.index, y=hist["Close_EUR"], name="Prix", line=dict(color="#f5f7f2", width=2)), row=1, col=1)
-                    fig.add_trace(go.Scatter(x=hist.index, y=hist["SMA50"], name="MM50", line=dict(color="#6fa8ff", width=1.3)), row=1, col=1)
+                    fig.add_trace(go.Scatter(x=hist.index, y=hist["SMA50"], name="MM50", line=dict(color="#2f80ff", width=1.3)), row=1, col=1)
                     fig.add_trace(go.Scatter(x=hist.index, y=hist["SMA200"], name="MM200", line=dict(color="#53ff9a", width=1.3)), row=1, col=1)
                     fig.add_trace(go.Scatter(x=hist.index, y=hist["RSI"], name="RSI", line=dict(color="#b8c0c0", width=1.2)), row=2, col=1)
 
@@ -1236,7 +1236,7 @@ if mode == "ANALYSE INDIVIDUELLE":
 
                         if selected_metrics:
                             fig_metrics = go.Figure()
-                            colors = ["#6fa8ff", "#53ff9a", "#ffd166", "#ff5757", "#f5f7f2", "#9b8cff"]
+                            colors = ["#2f80ff", "#53ff9a", "#ffd166", "#ff5757", "#f5f7f2", "#9b8cff"]
 
                             for i, metric in enumerate(selected_metrics):
                                 fig_metrics.add_trace(
@@ -1285,9 +1285,6 @@ if mode == "ANALYSE INDIVIDUELLE":
                 else:
                     st.info("Flux de presse indisponible.")
 
-# ==============================================================================
-# TOP SELECTION
-# ==============================================================================
 elif mode == "TOP SELECTION":
     st.markdown("#### Selection algorithmique")
 
@@ -1359,9 +1356,6 @@ elif mode == "TOP SELECTION":
 
         st.plotly_chart(fig_rank, use_container_width=True)
 
-# ==============================================================================
-# COMPARER
-# ==============================================================================
 elif mode == "Comparer":
     st.markdown("#### Comparer")
 
@@ -1498,7 +1492,7 @@ elif mode == "Comparer":
                                 mode="markers+text",
                                 text=chart_df["TICKER"],
                                 textposition="top center",
-                                marker=dict(size=16, color="#6fa8ff", line=dict(color="#f5f7f2", width=1))
+                                marker=dict(size=16, color="#2f80ff", line=dict(color="#f5f7f2", width=1))
                             )
                         )
                         fig.update_xaxes(title="PER")
@@ -1514,7 +1508,7 @@ elif mode == "Comparer":
                                 mode="markers+text",
                                 text=chart_df["TICKER"],
                                 textposition="top center",
-                                marker=dict(size=16, color="#6fa8ff", line=dict(color="#f5f7f2", width=1))
+                                marker=dict(size=16, color="#2f80ff", line=dict(color="#f5f7f2", width=1))
                             )
                         )
                         fig.update_xaxes(title="Marge nette (%)")
