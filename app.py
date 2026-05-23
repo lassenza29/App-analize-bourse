@@ -116,7 +116,7 @@ st.markdown("""
     }
 
     .hero-subtitle {
-        max-width: 780px;
+        max-width: 820px;
         color: var(--muted);
         font-size: 1rem;
         line-height: 1.55;
@@ -157,7 +157,7 @@ st.markdown("""
         z-index: 999999;
         left: 14px;
         top: calc(100% + 10px);
-        width: min(430px, 82vw);
+        width: min(440px, 82vw);
         padding: 13px 14px;
         border-radius: 14px;
         background: rgba(3,7,12,0.98);
@@ -300,7 +300,7 @@ st.markdown("""
         z-index: 999999;
         left: 0;
         top: calc(100% + 10px);
-        width: min(430px, 82vw);
+        width: min(440px, 82vw);
         padding: 13px 14px;
         border-radius: 14px;
         background: rgba(3,7,12,0.98);
@@ -469,13 +469,16 @@ SECTOR_PEERS = {
     "BASIC MATERIALS": ["LIN", "RIO", "BHP", "NEM", "FCX", "AI.PA"],
     "UTILITIES": ["NEE", "DUK", "SO", "AEP", "D", "ENGI.PA"],
     "REAL ESTATE": ["PLD", "AMT", "EQIX", "O", "SPG", "WELL"],
-    "LUXURY": ["MC.PA", "RMS.PA", "KER.PA", "OR.PA", "CFR.SW"]
+    "LUXURY": ["MC.PA", "RMS.PA", "KER.PA", "OR.PA", "RI.PA"]
 }
 
-MODULES = ["ANALYSE INDIVIDUELLE", "TOP SELECTION", "COMPARER"]
+MODULES = ["ANALYSE INDIVIDUELLE", "TOP SÉLECTION", "COMPARER"]
 
 if "module_choice" not in st.session_state:
     st.session_state.module_choice = "ANALYSE INDIVIDUELLE"
+
+if st.session_state.module_choice in ["TOP SELECTION", "TOP SÉLECTION"]:
+    st.session_state.module_choice = "TOP SÉLECTION"
 
 if st.session_state.module_choice == "Comparer":
     st.session_state.module_choice = "COMPARER"
@@ -491,45 +494,42 @@ if "compare_raw_df" not in st.session_state:
 
 
 RATIO_TOOLTIPS = {
-    "PER": "PER - Prix vs profits. Calcul : prix de l'action / benefice par action. Repere : 10 a 20. Tech accepte jusqu'a 30+. Cher si > 35.",
-    "PEG": "PEG - PER ajuste a la croissance. Calcul : PER / croissance annuelle des profits. Repere : <= 1. Sous-evalue si < 1. Cher si > 2.",
-    "PRICE / BOOK": "P/B - Prix vs valeur du patrimoine. Calcul : prix de l'action / valeur comptable par action. Repere : 1 a 2. Tres bas si < 1. Cher si > 3.",
-    "PRICE / SALES": "P/S - Prix vs chiffre d'affaires. Calcul : capitalisation boursiere / chiffre d'affaires. Repere : < 2. Surevalue si > 5.",
-    "EV / EBITDA": "EV / EBITDA - Valeur totale avec dette vs rentabilite brute. Calcul : valeur d'entreprise / EBITDA. Repere : < 10. Plus c'est bas, mieux c'est.",
-    "MARGE BRUTE": "Marge Brute - Rentabilite avant charges operationnelles. Calcul : (chiffre d'affaires - cout des ventes) / chiffre d'affaires x 100. Repere : plus elle est elevee, mieux c'est, a comparer au secteur.",
-    "MARGE OPERATIONNELLE": "Marge Operationnelle - Efficacite du business. Calcul : resultat operationnel / chiffre d'affaires x 100. Repere : > 15%.",
-    "MARGE NETTE": "Marge Nette - Benefice reel restant. Calcul : resultat net / chiffre d'affaires x 100. Repere : > 10%. Luxe et Tech visent > 20%.",
-    "ROE": "ROE - Rendement de l'argent des actionnaires. Calcul : resultat net / capitaux propres x 100. Repere : > 15%.",
-    "ROCE": "ROCE / ROIC - Rendement global actionnaires + dettes. Calcul : resultat operationnel apres impots / capital investi x 100. Repere : > 12%.",
-    "ROIC": "ROCE / ROIC - Rendement global actionnaires + dettes. Calcul : resultat operationnel apres impots / capital investi x 100. Repere : > 12%.",
-    "ROA": "ROA - Rentabilite de tous les actifs. Calcul : resultat net / total des actifs x 100. Repere : > 5%.",
-    "LEVIER DETTE / EBITDA": "Dette Nette / EBITDA - Annees pour rembourser la dette. Calcul : dette nette / EBITDA. Repere : < 2.5x. Danger si > 4x.",
-    "DETTE NETTE": "Dette nette - Dette apres deduction du cash. Calcul : dette totale - tresorerie.",
-    "DEBT / EQUITY": "Dette / Capitaux Propres - Poids des banques vs actionnaires. Calcul : dette totale / capitaux propres x 100. Repere : < 100%.",
-    "CURRENT RATIO": "Current Ratio - Liquidite court terme. Calcul : actifs courants / passifs courants. Repere : > 1.5. Alerte si < 1.",
-    "QUICK RATIO": "Quick Ratio - Liquidite immediate. Calcul : actifs courants hors stocks / passifs courants. Repere : > 1.",
-    "COUVERTURE DES INTERETS": "Couverture des Interets - Capacite a payer les interets de la dette. Calcul : EBIT / charges d'interets. Repere : > 5x.",
-    "PAYOUT RATIO": "Payout Ratio - Part du profit versee en dividende. Calcul : dividendes / resultat net x 100. Repere : 30% a 60%. Danger de coupure si > 80%.",
-    "DIVIDEND YIELD": "Dividend Yield - Rendement annuel du dividende. Calcul : dividende annuel par action / prix de l'action x 100. Repere : 2% a 5%. Piege si > 8%, cours souvent en chute.",
-    "FCF YIELD": "FCF Yield - Rendement du cash reel disponible. Calcul : free cash flow / capitalisation boursiere x 100. Repere : > 5%.",
-    "FCF": "Free Cash Flow - Cash reel restant apres investissements. Calcul : cash-flow operationnel - depenses d'investissement. Plus il est positif et regulier, mieux c'est.",
-    "EBITDA": "EBITDA - Rentabilite brute avant amortissements, financement et impots. Calcul : resultat operationnel + amortissements et depreciations. Sert a mesurer la performance pure de l'activite."
+    "PER": "PER - Prix vs profits. Calcul : prix de l'action / bénéfice par action. Repère : 10 à 20. Tech accepté jusqu'à 30+. Cher si > 35.",
+    "PEG": "PEG - PER ajusté à la croissance. Calcul : PER / croissance annuelle des profits. Repère : inférieur ou égal à 1. Sous-évalué si < 1. Cher si > 2.",
+    "PRICE / BOOK": "P/B - Prix vs valeur du patrimoine. Calcul : prix de l'action / valeur comptable par action. Repère : 1 à 2. Très bas si < 1. Cher si > 3.",
+    "PRICE / SALES": "P/S - Prix vs chiffre d'affaires. Calcul : capitalisation boursière / chiffre d'affaires. Repère : < 2. Surévalué si > 5.",
+    "EV / EBITDA": "EV / EBITDA - Valeur totale avec dette vs rentabilité brute. Calcul : valeur d'entreprise / EBITDA. Repère : < 10. Plus c'est bas, mieux c'est.",
+    "MARGE BRUTE": "Marge brute - Rentabilité avant charges opérationnelles. Calcul : chiffre d'affaires moins coût des ventes, divisé par chiffre d'affaires, puis x 100. Repère : plus elle est élevée, mieux c'est, à comparer au secteur.",
+    "MARGE OPÉRATIONNELLE": "Marge opérationnelle - Efficacité du business. Calcul : résultat opérationnel / chiffre d'affaires x 100. Repère : > 15%.",
+    "MARGE NETTE": "Marge nette - Bénéfice réel restant. Calcul : résultat net / chiffre d'affaires x 100. Repère : > 10%. Luxe et Tech visent > 20%.",
+    "ROE": "ROE - Rendement de l'argent des actionnaires. Calcul : résultat net / capitaux propres x 100. Repère : > 15%.",
+    "ROA": "ROA - Rentabilité de tous les actifs. Calcul : résultat net / total des actifs x 100. Repère : > 5%.",
+    "LEVIER DETTE / EBITDA": "Dette nette / EBITDA - Années théoriques pour rembourser la dette. Calcul : dette nette / EBITDA. Repère : < 2,5x. Danger si > 4x.",
+    "DETTE NETTE": "Dette nette - Dette après déduction du cash. Calcul : dette totale - trésorerie.",
+    "DEBT / EQUITY": "Dette / capitaux propres - Poids des banques vs actionnaires. Calcul : dette totale / capitaux propres x 100. Repère : < 100%.",
+    "CURRENT RATIO": "Current Ratio - Liquidité court terme. Calcul : actifs courants / passifs courants. Repère : > 1,5. Alerte si < 1.",
+    "QUICK RATIO": "Quick Ratio - Liquidité immédiate. Calcul : actifs courants hors stocks / passifs courants. Repère : > 1.",
+    "PAYOUT RATIO": "Payout Ratio - Part du profit versée en dividende. Calcul : dividendes / résultat net x 100. Repère : 30% à 60%. Danger de coupure si > 80%.",
+    "DIVIDEND YIELD": "Rendement du dividende - Rendement annuel du dividende. Calcul : dividende annuel par action / prix de l'action x 100. Repère : 2% à 5%. Piège possible si > 8%.",
+    "FCF YIELD": "Rendement FCF - Rendement du cash réel disponible. Calcul : free cash flow / capitalisation boursière x 100. Repère : > 5%.",
+    "FCF": "Free cash flow - Cash réel restant après investissements. Calcul : cash-flow opérationnel - dépenses d'investissement. Plus il est positif et régulier, mieux c'est.",
+    "EBITDA": "EBITDA - Rentabilité brute avant amortissements, financement et impôts. Calcul : résultat opérationnel + amortissements et dépréciations. Sert à mesurer la performance pure de l'activité."
 }
 
 METRIC_TOOLTIPS = {
-    "Chiffre d'affaires": "Chiffre d'affaires - Ventes totales de l'entreprise sur la periode. Calcul : somme des revenus generes par l'activite.",
-    "Resultat brut": "Resultat brut - Profit apres cout direct des ventes. Calcul : chiffre d'affaires - cout des ventes.",
-    "EBITDA": "EBITDA - Rentabilite brute avant amortissements, financement et impots. Calcul : resultat operationnel + amortissements et depreciations.",
-    "Resultat operationnel": "Resultat operationnel - Profit du coeur d'activite. Calcul : chiffre d'affaires - charges operationnelles.",
-    "Resultat net": "Resultat net - Benefice final pour les actionnaires. Calcul : resultat operationnel - interets - impots - elements exceptionnels.",
-    "Marge nette %": "Marge Nette - Benefice reel restant. Calcul : resultat net / chiffre d'affaires x 100. Repere : > 10%. Luxe et Tech visent > 20%.",
-    "Cash": "Cash - Tresorerie disponible. Calcul : cash et equivalents de tresorerie au bilan.",
-    "Dette totale": "Dette totale - Ensemble des dettes financieres. Calcul : dette court terme + dette long terme.",
-    "Dette nette": "Dette nette - Dette apres deduction du cash. Calcul : dette totale - tresorerie.",
-    "Free Cash Flow": "Free Cash Flow - Cash reel restant apres investissements. Calcul : cash-flow operationnel - depenses d'investissement.",
-    "Cash-flow operationnel": "Cash-flow operationnel - Cash genere par l'activite courante. Calcul : encaissements operationnels - decaissements operationnels.",
-    "Capex": "Capex - Depenses d'investissement. Calcul : investissements dans les actifs long terme, souvent machines, logiciels, magasins ou infrastructures.",
-    "FCF Yield %": "FCF Yield - Rendement du cash reel disponible. Calcul : free cash flow / capitalisation boursiere x 100. Repere : > 5%."
+    "Chiffre d'affaires": "Chiffre d'affaires - Ventes totales de l'entreprise sur la période. Calcul : somme des revenus générés par l'activité.",
+    "Résultat brut": "Résultat brut - Profit après coût direct des ventes. Calcul : chiffre d'affaires - coût des ventes.",
+    "EBITDA": "EBITDA - Rentabilité brute avant amortissements, financement et impôts. Calcul : résultat opérationnel + amortissements et dépréciations.",
+    "Résultat opérationnel": "Résultat opérationnel - Profit du cœur d'activité. Calcul : chiffre d'affaires - charges opérationnelles.",
+    "Résultat net": "Résultat net - Bénéfice final pour les actionnaires. Calcul : résultat opérationnel - intérêts - impôts - éléments exceptionnels.",
+    "Marge nette %": "Marge nette - Bénéfice réel restant. Calcul : résultat net / chiffre d'affaires x 100.",
+    "Cash": "Cash - Trésorerie disponible. Calcul : cash et équivalents de trésorerie au bilan.",
+    "Dette totale": "Dette totale - Ensemble des dettes financières. Calcul : dette court terme + dette long terme.",
+    "Dette nette": "Dette nette - Dette après déduction du cash. Calcul : dette totale - trésorerie.",
+    "Free cash flow": "Free cash flow - Cash réel restant après investissements. Calcul : cash-flow opérationnel - dépenses d'investissement.",
+    "Cash-flow opérationnel": "Cash-flow opérationnel - Cash généré par l'activité courante.",
+    "Capex": "Capex - Dépenses d'investissement dans les actifs long terme.",
+    "Rendement FCF %": "Rendement FCF - Free cash flow / capitalisation boursière x 100. Repère : > 5%."
 }
 
 
@@ -544,11 +544,14 @@ def get_ratio_tooltip(title):
         "PRICE / BOOK": "PRICE / BOOK",
         "PRICE / SALES": "PRICE / SALES",
         "MARGE BRUTE": "MARGE BRUTE",
-        "MARGE OP": "MARGE OPERATIONNELLE",
-        "MARGE OPERATIONNELLE": "MARGE OPERATIONNELLE",
+        "MARGE OP": "MARGE OPÉRATIONNELLE",
+        "MARGE OPÉRATIONNELLE": "MARGE OPÉRATIONNELLE",
+        "MARGE OPERATIONNELLE": "MARGE OPÉRATIONNELLE",
         "MARGE NETTE": "MARGE NETTE",
         "PAYOUT": "PAYOUT RATIO",
         "DIVIDEND": "DIVIDEND YIELD",
+        "RENDEMENT DU DIVIDENDE": "DIVIDEND YIELD",
+        "RENDEMENT FCF": "FCF YIELD",
         "FCF YIELD": "FCF YIELD",
         "FREE CASH FLOW": "FCF",
         "DEBT / EQUITY": "DEBT / EQUITY",
@@ -611,10 +614,6 @@ def get_fx_rate(currency_code):
     return resolve_fx_rate(currency_code)
 
 
-def get_fx_rate_live(currency_code):
-    return resolve_fx_rate(currency_code)
-
-
 def safe_float(val, multiplier=1.0, precision=2):
     if val is None or val == "":
         return None
@@ -648,7 +647,7 @@ def format_metric(val, suffix=""):
         return "<span class='fin-cash'>CASH POSITIF</span>"
     if isinstance(val, str):
         return val
-    formatted = f"{val:,.2f}".replace(",", " ")
+    formatted = f"{val:,.2f}".replace(",", " ").replace(".", ",")
     return f"{formatted} {suffix}".strip()
 
 
@@ -659,19 +658,19 @@ def tone_score(value):
 
 
 def tone_higher(value, threshold=0):
-    if not is_num(value):
+    if not is_num(value) or not is_num(threshold):
         return None
     return "positive" if value > threshold else "negative"
 
 
 def tone_lower(value, threshold):
-    if not is_num(value):
+    if not is_num(value) or not is_num(threshold):
         return None
     return "positive" if value < threshold else "negative"
 
 
 def tone_between(value, low, high):
-    if not is_num(value):
+    if not is_num(value) or not is_num(low) or not is_num(high):
         return None
     return "positive" if low < value < high else "negative"
 
@@ -747,7 +746,7 @@ def compute_cagr(first, last, years):
 
 def numeric_df_for_display(df):
     clean = df.copy()
-    text_cols = ["Ticker", "TICKER", "Nom", "NOM", "Type", "TYPE", "Régime", "Regime", "Secteur"]
+    text_cols = ["Symbole", "SYMBOLE", "Nom", "NOM", "Catégorie", "CATÉGORIE", "Régime", "Secteur"]
     for col in clean.columns:
         if col not in text_cols:
             clean[col] = pd.to_numeric(clean[col], errors="coerce")
@@ -760,7 +759,7 @@ def cell_color(value, col_name):
 
     col = col_name.upper()
 
-    if "SCORE" in col:
+    if "NOTE" in col:
         good = value >= 50
     elif "PER" in col:
         good = 0 < value < 25
@@ -768,7 +767,7 @@ def cell_color(value, col_name):
         good = value > 0
     elif "DETTE/EBITDA" in col:
         good = value < 2.5
-    elif "FRAIS" in col or "TER" in col:
+    elif "FRAIS" in col:
         good = value < 0.30
     elif "FCF" in col:
         good = value > 0
@@ -784,11 +783,11 @@ def format_dataframe(df):
 
     for col in df.columns:
         col_upper = col.upper()
-        if col_upper == "SCORE":
+        if col_upper == "NOTE":
             formatters[col] = "{:.0f}"
-        elif any(key in col for key in ["Prix", "PRIX", "PER", "ROE", "Marge", "MARGE", "FRAIS", "TER", "DETTE", "FCF", "Yield", "YIELD"]):
+        elif any(key in col_upper for key in ["PRIX", "PER", "ROE", "MARGE", "FRAIS", "DETTE", "FCF", "RENDEMENT", "P/S", "P/B"]):
             formatters[col] = "{:.2f}"
-        elif any(key in col for key in ["Market", "MARKET", "AUM", "Cap", "CAP"]):
+        elif any(key in col_upper for key in ["CAPITALISATION", "ACTIFS", "AUM"]):
             formatters[col] = "{:.0f}"
 
     styled = df.style.format(formatters, na_rep="-")
@@ -813,7 +812,7 @@ def render_open_asset_buttons(df, key_prefix):
     cols = st.columns(2)
 
     for i, (_, row) in enumerate(df.iterrows()):
-        ticker = str(row.get("Ticker", row.get("TICKER", ""))).upper().strip()
+        ticker = str(row.get("Symbole", row.get("SYMBOLE", ""))).upper().strip()
         name = str(row.get("Nom", row.get("NOM", ""))).strip()
 
         if not ticker:
@@ -896,7 +895,7 @@ def score_stock(data):
 
     details = {
         "Valorisation": valuation,
-        "Rentabilite": rentabilite,
+        "Rentabilité": rentabilite,
         "Bilan": bilan,
         "Croissance": croissance,
         "Momentum": momentum
@@ -906,7 +905,7 @@ def score_stock(data):
 
 
 def render_score_breakdown(score_detail):
-    st.markdown("#### Score separe")
+    st.markdown("#### Note détaillée")
     cols = st.columns(5)
 
     for i, (name, value) in enumerate(score_detail.items()):
@@ -970,15 +969,15 @@ def get_cashflow_metrics(ticker_symbol, fx_rate):
     df = pd.DataFrame(index=pd.to_datetime(cashflow.columns))
 
     if "Operating Cash Flow" in cashflow.index:
-        df["Cash-flow operationnel"] = cashflow.loc["Operating Cash Flow"].astype(float) * fx_rate / 1_000_000
+        df["Cash-flow opérationnel"] = cashflow.loc["Operating Cash Flow"].astype(float) * fx_rate / 1_000_000
 
     if "Capital Expenditure" in cashflow.index:
         df["Capex"] = cashflow.loc["Capital Expenditure"].astype(float) * fx_rate / 1_000_000
 
     if "Free Cash Flow" in cashflow.index:
-        df["Free Cash Flow"] = cashflow.loc["Free Cash Flow"].astype(float) * fx_rate / 1_000_000
-    elif "Cash-flow operationnel" in df.columns and "Capex" in df.columns:
-        df["Free Cash Flow"] = df["Cash-flow operationnel"] + df["Capex"]
+        df["Free cash flow"] = cashflow.loc["Free Cash Flow"].astype(float) * fx_rate / 1_000_000
+    elif "Cash-flow opérationnel" in df.columns and "Capex" in df.columns:
+        df["Free cash flow"] = df["Cash-flow opérationnel"] + df["Capex"]
 
     df = df.sort_index()
     return df.dropna(how="all")
@@ -993,7 +992,7 @@ def get_dividend_history(ticker_symbol):
 
         annual = div.groupby(div.index.year).sum().tail(8)
         df = pd.DataFrame({
-            "Annee": annual.index.astype(int),
+            "Année": annual.index.astype(int),
             "Dividende annuel": annual.values
         })
         return df
@@ -1108,10 +1107,10 @@ def extract_etf_data(info, ticker_symbol, fx_rate):
     category = str(info.get("category", "")).upper()
 
     d["Distribution"] = "ACCUMULATION" if " ACC" in name or "ACCUM" in name else "DISTRIBUTION"
-    d["Replication"] = "SYNTHETIQUE (SWAP)" if "SWAP" in name else "PHYSIQUE"
+    d["Replication"] = "SYNTHÉTIQUE (SWAP)" if "SWAP" in name else "PHYSIQUE"
 
     is_pea = any(x in name for x in ["AMUNDI", "LYXOR", "BNP", "ISHARES"]) and ".PA" in ticker_symbol.upper()
-    d["PEA"] = "ELIGIBLE PEA" if is_pea else "COMPTE-TITRES"
+    d["PEA"] = "ÉLIGIBLE PEA" if is_pea else "COMPTE-TITRES"
 
     score = 0
 
@@ -1158,7 +1157,7 @@ def get_press_news(ticker_symbol, company_name):
                     "title": title,
                     "link": entry.link,
                     "publisher": entry.source.title if hasattr(entry, "source") and hasattr(entry.source, "title") else "Presse",
-                    "published": entry.published[5:16] if hasattr(entry, "published") else "Recent"
+                    "published": entry.published[5:16] if hasattr(entry, "published") else "Récent"
                 })
         except Exception:
             pass
@@ -1169,10 +1168,10 @@ def get_press_news(ticker_symbol, company_name):
             if tk_news:
                 for n in tk_news[:5]:
                     news.append({
-                        "title": n.get("title", "Actualite de marche"),
+                        "title": n.get("title", "Actualité de marché"),
                         "link": n.get("link", "#"),
-                        "publisher": n.get("publisher", "Data Feed"),
-                        "published": "Recent"
+                        "publisher": n.get("publisher", "Flux de données"),
+                        "published": "Récent"
                     })
         except Exception:
             pass
@@ -1196,8 +1195,8 @@ def generate_consensus_and_verdict(data, is_etf):
 
         return f"""
         <div class="expert-verdict {color}">
-            <h4>Verdict strategique : {verdict}</h4>
-            <p>Score ETF : {score}/100. Actifs sous gestion : {format_metric(data.get("AUM"), "M€")}. Frais : {format_metric(data.get("TER"), "%")}. Replication : {data.get("Replication", "N/A")}. Fiscalite : {data.get("PEA", "N/A")}.</p>
+            <h4>Verdict stratégique : {verdict}</h4>
+            <p>Note ETF : {score}/100. Actifs sous gestion : {format_metric(data.get("AUM"), "M€")}. Frais : {format_metric(data.get("TER"), "%")}. Réplication : {data.get("Replication", "N/A")}. Fiscalité : {data.get("PEA", "N/A")}.</p>
         </div>
         """
 
@@ -1221,8 +1220,8 @@ def generate_consensus_and_verdict(data, is_etf):
 
     return f"""
     <div class="expert-verdict {color}">
-        <h4>Verdict strategique : {verdict}</h4>
-        <p>Score global : {score}/100. Valorisation {valorisation}. ROE : {format_metric(data.get("ROE"), "%")}. Levier : {format_metric(data.get("Levier"), "x")}. FCF Yield : {format_metric(data.get("FCF_Yield"), "%")}. Secteur : {data.get("Sector", "N/A")}.</p>
+        <h4>Verdict stratégique : {verdict}</h4>
+        <p>Note globale : {score}/100. Valorisation {valorisation}. ROE : {format_metric(data.get("ROE"), "%")}. Levier : {format_metric(data.get("Levier"), "x")}. Rendement FCF : {format_metric(data.get("FCF_Yield"), "%")}. Secteur : {data.get("Sector", "N/A")}.</p>
     </div>
     """
 
@@ -1244,20 +1243,20 @@ def rank_universe(asset_type, limit=12):
             if not info:
                 continue
 
-            fx = get_fx_rate_live(info.get("currency", "USD"))
+            fx = get_fx_rate(info.get("currency", "USD"))
             quote_type = info.get("quoteType", "")
 
             if asset_type == "ETF" or quote_type == "ETF":
                 d = extract_etf_data(info, ticker, fx)
 
                 rows.append({
-                    "Ticker": ticker,
+                    "Symbole": ticker,
                     "Nom": info.get("shortName", ticker),
-                    "Type": "ETF",
-                    "Score": d["Score"],
+                    "Catégorie": "ETF",
+                    "Note": d["Score"],
                     "Prix €": d["Prix"],
-                    "AUM M€": d["AUM"],
-                    "TER %": d["TER"],
+                    "Actifs sous gestion M€": d["AUM"],
+                    "Frais %": d["TER"],
                     "Régime": d["PEA"]
                 })
             else:
@@ -1269,16 +1268,16 @@ def rank_universe(asset_type, limit=12):
                         continue
 
                 rows.append({
-                    "Ticker": ticker,
+                    "Symbole": ticker,
                     "Nom": info.get("shortName", ticker),
-                    "Type": "Equity",
-                    "Score": d["Score"],
+                    "Catégorie": "Action",
+                    "Note": d["Score"],
                     "Prix €": d["Prix"],
-                    "Market Cap M€": d["MarketCap"],
+                    "Capitalisation M€": d["MarketCap"],
                     "PER": d["PER_Actuel"],
                     "ROE %": d["ROE"],
                     "Marge nette %": d["Marge_Nette"],
-                    "FCF Yield %": d["FCF_Yield"]
+                    "Rendement FCF %": d["FCF_Yield"]
                 })
         except Exception:
             continue
@@ -1288,7 +1287,7 @@ def rank_universe(asset_type, limit=12):
     if df.empty:
         return df
 
-    return df.sort_values("Score", ascending=False).head(limit)
+    return df.sort_values("Note", ascending=False).head(limit)
 
 
 @st.cache_data(ttl=3600)
@@ -1312,10 +1311,10 @@ def get_financial_metric_history(ticker_symbol, fx_rate):
 
     metric_map = {
         "Chiffre d'affaires": ["Total Revenue", "Operating Revenue"],
-        "Resultat brut": ["Gross Profit"],
+        "Résultat brut": ["Gross Profit"],
         "EBITDA": ["EBITDA", "Normalized EBITDA"],
-        "Resultat operationnel": ["Operating Income"],
-        "Resultat net": ["Net Income", "Net Income Common Stockholders"]
+        "Résultat opérationnel": ["Operating Income"],
+        "Résultat net": ["Net Income", "Net Income Common Stockholders"]
     }
 
     for label, possible_rows in metric_map.items():
@@ -1336,8 +1335,8 @@ def get_financial_metric_history(ticker_symbol, fx_rate):
                     df[label] = balance.loc[row_name].astype(float) * fx_rate / 1_000_000
                     break
 
-    if "Chiffre d'affaires" in df.columns and "Resultat net" in df.columns:
-        df["Marge nette %"] = (df["Resultat net"] / df["Chiffre d'affaires"]) * 100
+    if "Chiffre d'affaires" in df.columns and "Résultat net" in df.columns:
+        df["Marge nette %"] = (df["Résultat net"] / df["Chiffre d'affaires"]) * 100
 
     if "Dette totale" in df.columns and "Cash" in df.columns:
         df["Dette nette"] = df["Dette totale"] - df["Cash"]
@@ -1377,10 +1376,10 @@ def get_sector_comparison(ticker_symbol, sector):
             d = extract_stock_data(info, fx)
 
             rows.append({
-                "Ticker": t,
+                "Symbole": t,
                 "Nom": info.get("shortName", t),
                 "Secteur": d["Sector"],
-                "Score": d["Score"],
+                "Note": d["Score"],
                 "PER": d["PER_Actuel"],
                 "P/S": d["PS"],
                 "P/B": d["PB"],
@@ -1388,7 +1387,7 @@ def get_sector_comparison(ticker_symbol, sector):
                 "ROE %": d["ROE"],
                 "Marge nette %": d["Marge_Nette"],
                 "Dette/EBITDA": d["Levier"] if isinstance(d["Levier"], (int, float)) else None,
-                "FCF Yield %": d["FCF_Yield"]
+                "Rendement FCF %": d["FCF_Yield"]
             })
         except Exception:
             continue
@@ -1403,11 +1402,11 @@ def calculate_dcf(data, growth_rate, discount_rate, terminal_growth, years, marg
     price = data.get("Prix")
 
     if not is_num(fcf) or fcf <= 0:
-        return None, "Free cash flow indisponible ou negatif. DCF non fiable."
+        return None, "Free cash flow indisponible ou négatif. DCF non fiable."
     if not is_num(shares) or shares <= 0:
         return None, "Nombre d'actions indisponible. DCF impossible."
     if discount_rate <= terminal_growth:
-        return None, "Le taux d'actualisation doit etre superieur a la croissance terminale."
+        return None, "Le taux d'actualisation doit être supérieur à la croissance terminale."
 
     projections = []
     current_fcf = fcf
@@ -1415,7 +1414,7 @@ def calculate_dcf(data, growth_rate, discount_rate, terminal_growth, years, marg
     for year in range(1, years + 1):
         current_fcf = current_fcf * (1 + growth_rate)
         pv = current_fcf / ((1 + discount_rate) ** year)
-        projections.append({"Annee": year, "FCF projete M€": current_fcf, "Valeur actuelle M€": pv})
+        projections.append({"Année": year, "FCF projeté M€": current_fcf, "Valeur actuelle M€": pv})
 
     terminal_value = current_fcf * (1 + terminal_growth) / (discount_rate - terminal_growth)
     pv_terminal = terminal_value / ((1 + discount_rate) ** years)
@@ -1435,12 +1434,12 @@ def calculate_dcf(data, growth_rate, discount_rate, terminal_growth, years, marg
     result = {
         "Projections": pd.DataFrame(projections),
         "Valeur terminale M€": terminal_value,
-        "Valeur terminale actualisee M€": pv_terminal,
+        "Valeur terminale actualisée M€": pv_terminal,
         "Valeur entreprise M€": enterprise_value,
         "Dette nette M€": net_debt,
         "Valeur capitaux propres M€": equity_value,
         "Juste valeur par action €": fair_value,
-        "Prix avec marge de securite €": safety_price,
+        "Prix avec marge de sécurité €": safety_price,
         "Potentiel %": upside
     }
 
@@ -1452,37 +1451,77 @@ def get_risk_alerts(data, metrics_df, share_dilution):
 
     levier = data.get("Levier")
     if isinstance(levier, (int, float)) and levier > 4:
-        alerts.append(("danger", f"Dette elevee : dette nette / EBITDA a {levier:.2f}x, zone de danger au-dessus de 4x."))
+        alerts.append(("danger", f"Dette élevée : dette nette / EBITDA à {levier:.2f}x, zone de danger au-dessus de 4x."))
     elif isinstance(levier, (int, float)) and levier > 2.5:
-        alerts.append(("warning", f"Dette a surveiller : dette nette / EBITDA a {levier:.2f}x, au-dessus du repere de 2.5x."))
+        alerts.append(("warning", f"Dette à surveiller : dette nette / EBITDA à {levier:.2f}x, au-dessus du repère de 2,5x."))
 
     if data.get("Debt_Equity") is not None and data["Debt_Equity"] > 150:
-        alerts.append(("warning", f"Dette / capitaux propres eleve : {data['Debt_Equity']:.2f}%."))
+        alerts.append(("warning", f"Dette / capitaux propres élevée : {data['Debt_Equity']:.2f}%."))
 
-    if data.get("Payout") is not None and data["Payout"] > 80:
-        alerts.append(("danger", f"Payout dangereux : {data['Payout']:.2f}%, risque de coupure du dividende."))
-    elif data.get("Payout") is not None and data["Payout"] > 60:
-        alerts.append(("warning", f"Payout a surveiller : {data['Payout']:.2f}%, au-dessus de la zone ideale 30%-60%."))
+    if data.get("Current_Ratio") is not None:
+        if data["Current_Ratio"] < 1:
+            alerts.append(("danger", f"Liquidité court terme faible : Current Ratio à {data['Current_Ratio']:.2f}, sous 1."))
+        elif data["Current_Ratio"] < 1.5:
+            alerts.append(("warning", f"Liquidité à surveiller : Current Ratio à {data['Current_Ratio']:.2f}, sous le repère de 1,5."))
+
+    if data.get("Quick_Ratio") is not None and data["Quick_Ratio"] < 1:
+        alerts.append(("warning", f"Liquidité immédiate à surveiller : Quick Ratio à {data['Quick_Ratio']:.2f}, sous 1."))
+
+    if data.get("Payout") is not None:
+        if data["Payout"] > 80:
+            alerts.append(("danger", f"Payout dangereux : {data['Payout']:.2f}%, risque de coupure du dividende."))
+        elif data["Payout"] > 60:
+            alerts.append(("warning", f"Payout à surveiller : {data['Payout']:.2f}%, au-dessus de la zone idéale 30%-60%."))
+
+    if data.get("Dividend_Yield") is not None and data["Dividend_Yield"] > 8:
+        alerts.append(("warning", f"Rendement du dividende très élevé : {data['Dividend_Yield']:.2f}%, possible piège de rendement."))
 
     if data.get("FCF") is not None and data["FCF"] < 0:
-        alerts.append(("danger", "Free cash flow negatif : l'entreprise ne genere pas de cash disponible sur la periode actuelle."))
+        alerts.append(("danger", "Free cash flow négatif : l'entreprise ne génère pas de cash disponible sur la période actuelle."))
+
+    if data.get("FCF_Yield") is not None and data["FCF_Yield"] < 2:
+        alerts.append(("warning", f"Rendement FCF faible : {data['FCF_Yield']:.2f}%, sous le seuil confortable de 5%."))
 
     if data.get("Marge_Nette") is not None and data["Marge_Nette"] < 0:
-        alerts.append(("danger", f"Marge nette negative : {data['Marge_Nette']:.2f}%."))
+        alerts.append(("danger", f"Marge nette négative : {data['Marge_Nette']:.2f}%."))
+    elif data.get("Marge_Nette") is not None and data["Marge_Nette"] < 5:
+        alerts.append(("warning", f"Marge nette faible : {data['Marge_Nette']:.2f}%, rentabilité fragile."))
 
-    if metrics_df is not None and not metrics_df.empty and "Marge nette %" in metrics_df.columns:
-        marge = metrics_df["Marge nette %"].dropna()
-        if len(marge) >= 3 and marge.iloc[-1] < marge.iloc[-2] < marge.iloc[-3]:
-            alerts.append(("warning", "Marge nette en baisse sur trois periodes consecutives."))
+    if data.get("PER_Actuel") is not None and data["PER_Actuel"] > 35:
+        alerts.append(("warning", f"Valorisation exigeante : PER à {data['PER_Actuel']:.2f}, supérieur à 35."))
 
-    if share_dilution is not None and share_dilution > 5:
-        alerts.append(("warning", f"Dilution potentielle : nombre d'actions en hausse d'environ {share_dilution:.2f}% sur la periode disponible."))
+    if data.get("PS") is not None and data["PS"] > 5:
+        alerts.append(("warning", f"Prix / ventes élevé : P/S à {data['PS']:.2f}, zone de survalorisation possible."))
+
+    if data.get("PB") is not None and data["PB"] > 5:
+        alerts.append(("warning", f"Prix / valeur comptable élevé : P/B à {data['PB']:.2f}."))
 
     if data.get("Rev_Growth") is not None and data["Rev_Growth"] < 0:
-        alerts.append(("warning", f"Croissance du chiffre d'affaires negative : {data['Rev_Growth']:.2f}%."))
+        alerts.append(("warning", f"Croissance du chiffre d'affaires négative : {data['Rev_Growth']:.2f}%."))
+    if data.get("Earnings_Growth") is not None and data["Earnings_Growth"] < 0:
+        alerts.append(("warning", f"Croissance des profits négative : {data['Earnings_Growth']:.2f}%."))
+
+    if data.get("Target") is not None and data.get("Prix") is not None and data["Target"] < data["Prix"]:
+        alerts.append(("warning", "Objectif moyen des analystes inférieur au prix actuel."))
+
+    if data.get("Prix_Source") is not None and data.get("Two_Hundred_Day_Avg") is not None and data["Prix_Source"] < data["Two_Hundred_Day_Avg"]:
+        alerts.append(("warning", "Momentum fragile : prix sous la moyenne mobile 200 jours."))
+
+    if metrics_df is not None and not metrics_df.empty and "Marge nette %" in metrics_df.columns:
+        marge = metrics_df["Marge nette %"].dropna().sort_index()
+        if len(marge) >= 3:
+            last_three = marge.tail(3).values
+            if last_three[2] < last_three[1] < last_three[0]:
+                alerts.append(("warning", "Marge nette en baisse sur trois périodes consécutives."))
+
+    if share_dilution is not None:
+        if share_dilution > 5:
+            alerts.append(("warning", f"Dilution importante : nombre d'actions en hausse d'environ {share_dilution:.2f}% sur la période disponible."))
+        elif share_dilution > 2:
+            alerts.append(("info", f"Dilution légère : nombre d'actions en hausse d'environ {share_dilution:.2f}%."))
 
     if not alerts:
-        alerts.append(("info", "Aucune alerte majeure detectee avec les donnees disponibles."))
+        alerts.append(("info", "Aucune alerte critique détectée avec les données disponibles. À confirmer avec les rapports financiers officiels."))
 
     return alerts
 
@@ -1506,29 +1545,29 @@ def build_dividend_analysis(data, dividend_df):
     if dividend_df is not None and not dividend_df.empty and len(dividend_df) >= 2:
         first = dividend_df["Dividende annuel"].iloc[0]
         last = dividend_df["Dividende annuel"].iloc[-1]
-        years = dividend_df["Annee"].iloc[-1] - dividend_df["Annee"].iloc[0]
+        years = dividend_df["Année"].iloc[-1] - dividend_df["Année"].iloc[0]
         cagr = compute_cagr(first, last, years)
 
     if payout is None:
-        safety = "Indeterminee"
+        safety = "Indéterminée"
         tone = None
     elif payout <= 60:
         safety = "Saine"
         tone = "positive"
     elif payout <= 80:
-        safety = "A surveiller"
+        safety = "À surveiller"
         tone = "negative"
     else:
         safety = "Risque de coupure"
         tone = "negative"
 
     return {
-        "Dividend Yield": dividend_yield,
+        "Rendement du dividende": dividend_yield,
         "Payout": payout,
         "Dividende annuel": dividend_rate,
         "Croissance dividende": cagr,
-        "Securite": safety,
-        "Tone": tone
+        "Sécurité": safety,
+        "Tonalité": tone
     }
 
 
@@ -1615,12 +1654,12 @@ def build_report_lines(ticker, name, data, dcf_result, dividend_analysis, alerts
     lines = [
         f"Actif : {name} ({ticker})",
         f"Prix marche : {format_metric(data.get('Prix'), 'EUR')}",
-        f"Score global : {data.get('Score', 'N/A')}/100",
+        f"Note globale : {data.get('Score', 'N/A')}/100",
         ""
     ]
 
     if data.get("Score_Detail"):
-        lines.append("Score separe")
+        lines.append("Note detaillee")
         for key, value in data["Score_Detail"].items():
             lines.append(f"- {key} : {value}/20")
         lines.append("")
@@ -1631,7 +1670,7 @@ def build_report_lines(ticker, name, data, dcf_result, dividend_analysis, alerts
         f"- P/S : {data.get('PS')}",
         f"- P/B : {data.get('PB')}",
         f"- EV/EBITDA : {data.get('EV_EBITDA')}",
-        f"- FCF Yield : {data.get('FCF_Yield')}%",
+        f"- Rendement FCF : {data.get('FCF_Yield')}%",
         "",
         "Rentabilite et bilan",
         f"- Marge brute : {data.get('Marge_Brute')}%",
@@ -1641,9 +1680,9 @@ def build_report_lines(ticker, name, data, dcf_result, dividend_analysis, alerts
         f"- Current ratio : {data.get('Current_Ratio')}",
         "",
         "Dividende",
-        f"- Dividend Yield : {dividend_analysis.get('Dividend Yield')}%",
+        f"- Rendement du dividende : {dividend_analysis.get('Rendement du dividende')}%",
         f"- Payout : {dividend_analysis.get('Payout')}%",
-        f"- Securite : {dividend_analysis.get('Securite')}",
+        f"- Securite : {dividend_analysis.get('Sécurité')}",
         ""
     ])
 
@@ -1651,7 +1690,7 @@ def build_report_lines(ticker, name, data, dcf_result, dividend_analysis, alerts
         lines.extend([
             "DCF simplifie",
             f"- Juste valeur par action : {dcf_result.get('Juste valeur par action €'):.2f} EUR",
-            f"- Prix avec marge de securite : {dcf_result.get('Prix avec marge de securite €'):.2f} EUR",
+            f"- Prix avec marge de securite : {dcf_result.get('Prix avec marge de sécurité €'):.2f} EUR",
             f"- Potentiel : {dcf_result.get('Potentiel %'):.2f}%" if dcf_result.get("Potentiel %") is not None else "- Potentiel : N/A",
             ""
         ])
@@ -1666,11 +1705,11 @@ def build_report_lines(ticker, name, data, dcf_result, dividend_analysis, alerts
 st.markdown("""
 <div class="terminal-shell">
     <div class="terminal-topline">
-        <div class="status-pill">Live Market Data</div>
+        <div class="status-pill">Données de marché en direct</div>
     </div>
-    <div class="hero-title">Finance cockpit.</div>
+    <div class="hero-title">Poste d'analyse financière.</div>
     <div class="hero-subtitle">
-        Analyse fondamentale, scoring proprietaire, DCF, comparaison sectorielle, cash-flow, dividendes, risques et export PDF.
+        Analyse fondamentale, notation propriétaire, DCF, comparaison sectorielle, cash-flow, dividendes, risques et export PDF.
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -1696,11 +1735,11 @@ if mode == "ANALYSE INDIVIDUELLE":
     ).upper().strip()
 
     if ticker_input:
-        with st.spinner("Acquisition des donnees en cours..."):
+        with st.spinner("Acquisition des données en cours..."):
             info = fetch_info_with_retry(ticker_input)
 
             if not info:
-                st.error("Impossible de recuperer les donnees. Verifie le ticker ou reessaie dans quelques minutes.")
+                st.error("Impossible de récupérer les données. Vérifie le symbole ou réessaie dans quelques minutes.")
                 st.stop()
 
             nom = info.get("longName", info.get("shortName", ticker_input)).upper()
@@ -1716,8 +1755,8 @@ if mode == "ANALYSE INDIVIDUELLE":
             tabs = st.tabs([
                 "FONDAMENTAUX",
                 "TECHNIQUE",
-                "EVOLUTION METRIQUES",
-                "DCF",
+                "ÉVOLUTION DES MÉTRIQUES",
+                "VALORISATION DCF",
                 "SECTEUR",
                 "DIVIDENDES",
                 "RISQUES",
@@ -1730,25 +1769,25 @@ if mode == "ANALYSE INDIVIDUELLE":
                     data = extract_etf_data(info, ticker_input, fx_rate)
 
                     if data["AUM"] and data["AUM"] < 100:
-                        st.warning("Liquidite faible : AUM inferieur a 100 M€.")
+                        st.warning("Liquidité faible : actifs sous gestion inférieurs à 100 M€.")
 
                     c1, c2, c3, c4 = st.columns(4)
                     with c1:
-                        render_metric_card("Score ETF", format_metric(data["Score"], "/100"), tone_score(data["Score"]))
+                        render_metric_card("Note ETF", format_metric(data["Score"], "/100"), tone_score(data["Score"]))
                     with c2:
-                        render_metric_card("Net Asset Value", format_metric(data["Prix"], "€"))
+                        render_metric_card("Valeur liquidative", format_metric(data["Prix"], "€"))
                     with c3:
-                        render_metric_card("Total Expense Ratio", format_metric(data["TER"], "%"), tone_lower(data["TER"], 0.30))
+                        render_metric_card("Frais annuels", format_metric(data["TER"], "%"), tone_lower(data["TER"], 0.30))
                     with c4:
-                        render_metric_card("Assets Under Management", format_metric(data["AUM"], "M€"), tone_higher(data["AUM"], 100))
+                        render_metric_card("Actifs sous gestion", format_metric(data["AUM"], "M€"), tone_higher(data["AUM"], 100))
 
                     c5, c6, c7 = st.columns(3)
                     with c5:
-                        render_metric_card("Regime fiscal", data["PEA"], "positive" if data["PEA"] == "ELIGIBLE PEA" else None)
+                        render_metric_card("Régime fiscal", data["PEA"], "positive" if data["PEA"] == "ÉLIGIBLE PEA" else None)
                     with c6:
                         render_metric_card("Politique dividende", data["Distribution"])
                     with c7:
-                        render_metric_card("Replication", data["Replication"], "positive" if data["Replication"] == "PHYSIQUE" else None)
+                        render_metric_card("Réplication", data["Replication"], "positive" if data["Replication"] == "PHYSIQUE" else None)
 
                 else:
                     data = extract_stock_data(info, fx_rate)
@@ -1760,7 +1799,7 @@ if mode == "ANALYSE INDIVIDUELLE":
                         st.markdown(
                             f"""
                             <div class="score-container metric-{score_tone}">
-                                <div class="score-title">Score global</div>
+                                <div class="score-title">Note globale</div>
                                 <div class="score-val metric-{score_tone}">{data["Score"]}</div>
                                 <div class="score-caption">Notation fondamentale sur 100</div>
                             </div>
@@ -1769,9 +1808,9 @@ if mode == "ANALYSE INDIVIDUELLE":
                         )
 
                     with c2:
-                        render_metric_card("Prix marche", format_metric(data["Prix"], "€"))
+                        render_metric_card("Prix marché", format_metric(data["Prix"], "€"))
                         render_metric_card(
-                            "Consensus target",
+                            "Objectif moyen analystes",
                             f"{format_metric(data['Target'], '€')} // {data['Reco']}",
                             tone_target(data["Target"], data["Prix"])
                         )
@@ -1794,17 +1833,17 @@ if mode == "ANALYSE INDIVIDUELLE":
                         render_metric_card("Price / Sales", format_metric(data["PS"], "x"), tone_between(data["PS"], 0, 5))
                         render_metric_card("Price / Book", format_metric(data["PB"], "x"), tone_between(data["PB"], 0, 3))
                         render_metric_card("EV / EBITDA", format_metric(data["EV_EBITDA"], "x"), tone_between(data["EV_EBITDA"], 0, 10))
-                        render_metric_card("FCF Yield", format_metric(data["FCF_Yield"], "%"), tone_higher(data["FCF_Yield"], 5))
+                        render_metric_card("Rendement FCF", format_metric(data["FCF_Yield"], "%"), tone_higher(data["FCF_Yield"], 5))
                         render_metric_card("Valeur Graham", format_metric(data["Graham"], "€"), tone_graham(data["Graham"], data["Prix"]))
 
                     with col_b:
-                        st.markdown("#### Rentabilite")
+                        st.markdown("#### Rentabilité")
                         render_metric_card("Marge brute", format_metric(data["Marge_Brute"], "%"), tone_higher(data["Marge_Brute"], 0))
-                        render_metric_card("Marge operationnelle", format_metric(data["Marge_Op"], "%"), tone_higher(data["Marge_Op"], 15))
+                        render_metric_card("Marge opérationnelle", format_metric(data["Marge_Op"], "%"), tone_higher(data["Marge_Op"], 15))
                         render_metric_card("Marge nette", format_metric(data["Marge_Nette"], "%"), tone_higher(data["Marge_Nette"], 10))
                         render_metric_card("ROE", format_metric(data["ROE"], "%"), tone_higher(data["ROE"], 15))
                         render_metric_card("ROA", format_metric(data["ROA"], "%"), tone_higher(data["ROA"], 5))
-                        render_metric_card("Free Cash Flow", format_metric(data["FCF"], "M€"), tone_higher(data["FCF"], 0))
+                        render_metric_card("Free cash flow", format_metric(data["FCF"], "M€"), tone_higher(data["FCF"], 0))
                         render_metric_card("Payout ratio", format_metric(data["Payout"], "%"), tone_between(data["Payout"], 30, 60))
 
                     with col_c:
@@ -1812,10 +1851,10 @@ if mode == "ANALYSE INDIVIDUELLE":
                         render_metric_card("Dette nette globale", format_metric(data["Dette_Nette"], "M€"), tone_lower(data["Dette_Nette"], 0))
                         render_metric_card("EBITDA", format_metric(data["EBITDA"], "M€"), tone_higher(data["EBITDA"], 0))
                         render_metric_card("Levier dette / EBITDA", format_metric(data["Levier"], "x"), tone_leverage(data["Levier"]))
-                        render_metric_card("Current ratio", format_metric(data["Current_Ratio"]), tone_higher(data["Current_Ratio"], 1.5))
-                        render_metric_card("Quick ratio", format_metric(data["Quick_Ratio"]), tone_higher(data["Quick_Ratio"], 1.0))
+                        render_metric_card("Current Ratio", format_metric(data["Current_Ratio"]), tone_higher(data["Current_Ratio"], 1.5))
+                        render_metric_card("Quick Ratio", format_metric(data["Quick_Ratio"]), tone_higher(data["Quick_Ratio"], 1.0))
                         render_metric_card("Debt / Equity", format_metric(data["Debt_Equity"], "%"), tone_lower(data["Debt_Equity"], 100))
-                        render_metric_card("Dividend Yield", format_metric(data["Dividend_Yield"], "%"), tone_between(data["Dividend_Yield"], 2, 5))
+                        render_metric_card("Rendement du dividende", format_metric(data["Dividend_Yield"], "%"), tone_between(data["Dividend_Yield"], 2, 5))
 
             with tabs[1]:
                 hist = get_price_history(ticker_input, "5y")
@@ -1857,11 +1896,11 @@ if mode == "ANALYSE INDIVIDUELLE":
 
                     st.plotly_chart(fig, use_container_width=True)
                 else:
-                    st.error("Serie temporelle insuffisante.")
+                    st.error("Série temporelle insuffisante.")
 
             with tabs[2]:
                 if is_etf:
-                    st.info("L'evolution des metriques fondamentales est disponible pour les actions. Pour les ETF, utilise l'onglet Technique.")
+                    st.info("L'évolution des métriques fondamentales est disponible pour les actions. Pour les ETF, utilise l'onglet Technique.")
                 else:
                     metrics_df = get_financial_metric_history(ticker_input, fx_rate)
                     cashflow_df = get_cashflow_metrics(ticker_input, fx_rate)
@@ -1869,20 +1908,20 @@ if mode == "ANALYSE INDIVIDUELLE":
                     if not cashflow_df.empty:
                         metrics_df = metrics_df.join(cashflow_df, how="outer")
 
-                        if data.get("MarketCap") is not None and data["MarketCap"] > 0 and "Free Cash Flow" in metrics_df.columns:
-                            metrics_df["FCF Yield %"] = (metrics_df["Free Cash Flow"] / data["MarketCap"]) * 100
+                        if data.get("MarketCap") is not None and data["MarketCap"] > 0 and "Free cash flow" in metrics_df.columns:
+                            metrics_df["Rendement FCF %"] = (metrics_df["Free cash flow"] / data["MarketCap"]) * 100
 
                     if metrics_df.empty:
-                        st.error("Donnees financieres indisponibles pour cet actif.")
+                        st.error("Données financières indisponibles pour cet actif.")
                     else:
                         available_metrics = list(metrics_df.columns)
                         default_metrics = [
-                            m for m in ["Chiffre d'affaires", "Resultat net", "EBITDA", "Free Cash Flow", "FCF Yield %", "Dette nette"]
+                            m for m in ["Chiffre d'affaires", "Résultat net", "EBITDA", "Free cash flow", "Rendement FCF %", "Dette nette"]
                             if m in available_metrics
                         ]
 
                         selected_metrics = st.multiselect(
-                            "Metriques a afficher",
+                            "Métriques à afficher",
                             available_metrics,
                             default=default_metrics
                         )
@@ -1911,7 +1950,7 @@ if mode == "ANALYSE INDIVIDUELLE":
                                 plot_bgcolor="rgba(13,17,19,0.72)",
                                 margin=dict(l=0, r=0, t=30, b=0),
                                 xaxis=dict(showgrid=False),
-                                yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.07)", title="M€ / % selon metrique"),
+                                yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.07)", title="M€ / % selon métrique"),
                                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
                             )
 
@@ -1924,7 +1963,7 @@ if mode == "ANALYSE INDIVIDUELLE":
                     st.info("Le DCF est surtout pertinent pour les actions individuelles, pas pour les ETF.")
                 else:
                     data = extract_stock_data(info, fx_rate)
-                    st.markdown("#### Valorisation DCF simplifiee")
+                    st.markdown("#### Valorisation DCF simplifiée")
 
                     c1, c2, c3, c4, c5 = st.columns(5)
                     with c1:
@@ -1936,7 +1975,7 @@ if mode == "ANALYSE INDIVIDUELLE":
                     with c4:
                         dcf_years = st.slider("Horizon", 5, 12, 8)
                     with c5:
-                        dcf_safety = st.slider("Marge securite", 0.0, 50.0, 20.0, 5.0) / 100
+                        dcf_safety = st.slider("Marge de sécurité", 0.0, 50.0, 20.0, 5.0) / 100
 
                     dcf_result, dcf_error = calculate_dcf(data, dcf_growth, dcf_discount, dcf_terminal, dcf_years, dcf_safety)
 
@@ -1947,33 +1986,64 @@ if mode == "ANALYSE INDIVIDUELLE":
                         with c1:
                             render_metric_card("Juste valeur DCF", format_metric(dcf_result["Juste valeur par action €"], "€"), tone_target(dcf_result["Juste valeur par action €"], data["Prix"]))
                         with c2:
-                            render_metric_card("Prix avec marge securite", format_metric(dcf_result["Prix avec marge de securite €"], "€"), tone_target(dcf_result["Prix avec marge de securite €"], data["Prix"]))
+                            render_metric_card("Prix avec marge de sécurité", format_metric(dcf_result["Prix avec marge de sécurité €"], "€"), tone_target(dcf_result["Prix avec marge de sécurité €"], data["Prix"]))
                         with c3:
                             render_metric_card("Potentiel DCF", format_metric(dcf_result["Potentiel %"], "%"), tone_higher(dcf_result["Potentiel %"], 0))
 
-                        st.dataframe(format_dataframe(dcf_result["Projections"]), use_container_width=True)
+                        dcf_proj = dcf_result["Projections"]
+                        st.dataframe(format_dataframe(dcf_proj), use_container_width=True)
 
-                        fig_dcf = go.Figure()
-                        fig_dcf.add_trace(go.Bar(
-                            x=dcf_result["Projections"]["Annee"],
-                            y=dcf_result["Projections"]["FCF projete M€"],
-                            name="FCF projete",
-                            marker_color="#2f80ff"
+                        fig_fcf = go.Figure()
+                        fig_fcf.add_trace(go.Scatter(
+                            x=dcf_proj["Année"],
+                            y=dcf_proj["FCF projeté M€"],
+                            mode="lines+markers",
+                            name="FCF projeté",
+                            fill="tozeroy",
+                            line=dict(color="#2f80ff", width=3),
+                            fillcolor="rgba(47,128,255,0.18)"
                         ))
-                        fig_dcf.add_trace(go.Scatter(
-                            x=dcf_result["Projections"]["Annee"],
-                            y=dcf_result["Projections"]["Valeur actuelle M€"],
-                            name="Valeur actuelle",
-                            line=dict(color="#53ff9a", width=2)
+                        fig_fcf.add_trace(go.Scatter(
+                            x=dcf_proj["Année"],
+                            y=dcf_proj["Valeur actuelle M€"],
+                            mode="lines+markers",
+                            name="Valeur actualisée",
+                            line=dict(color="#53ff9a", width=3)
                         ))
-                        fig_dcf.update_layout(
-                            height=420,
+                        fig_fcf.update_layout(
+                            height=430,
                             template="plotly_dark",
                             paper_bgcolor="rgba(0,0,0,0)",
                             plot_bgcolor="rgba(13,17,19,0.72)",
-                            margin=dict(l=0, r=0, t=24, b=0)
+                            margin=dict(l=0, r=0, t=30, b=0),
+                            xaxis=dict(title="Année", showgrid=False),
+                            yaxis=dict(title="M€", gridcolor="rgba(255,255,255,0.07)"),
+                            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
                         )
-                        st.plotly_chart(fig_dcf, use_container_width=True)
+                        st.plotly_chart(fig_fcf, use_container_width=True)
+
+                        fig_value = go.Figure()
+                        fig_value.add_trace(go.Bar(
+                            x=["Prix actuel", "Juste valeur DCF", "Prix avec sécurité"],
+                            y=[data["Prix"], dcf_result["Juste valeur par action €"], dcf_result["Prix avec marge de sécurité €"]],
+                            marker_color=["#f5f7f2", "#2f80ff", "#53ff9a"],
+                            text=[
+                                f"{data['Prix']:.2f} €" if data["Prix"] else "-",
+                                f"{dcf_result['Juste valeur par action €']:.2f} €",
+                                f"{dcf_result['Prix avec marge de sécurité €']:.2f} €"
+                            ],
+                            textposition="outside"
+                        ))
+                        fig_value.update_layout(
+                            height=390,
+                            template="plotly_dark",
+                            paper_bgcolor="rgba(0,0,0,0)",
+                            plot_bgcolor="rgba(13,17,19,0.72)",
+                            margin=dict(l=0, r=0, t=30, b=0),
+                            yaxis=dict(title="€ / action", gridcolor="rgba(255,255,255,0.07)"),
+                            xaxis=dict(showgrid=False)
+                        )
+                        st.plotly_chart(fig_value, use_container_width=True)
 
             with tabs[4]:
                 if is_etf:
@@ -1990,36 +2060,53 @@ if mode == "ANALYSE INDIVIDUELLE":
                         comp_df = numeric_df_for_display(comp_df)
                         st.dataframe(format_dataframe(comp_df), use_container_width=True, height=430)
 
-                        numeric_cols = ["PER", "P/S", "P/B", "EV/EBITDA", "ROE %", "Marge nette %", "FCF Yield %"]
-                        target_row = comp_df[comp_df["Ticker"].str.upper() == ticker_input.upper()]
+                        target_row = comp_df[comp_df["Symbole"].str.upper() == ticker_input.upper()]
 
                         if not target_row.empty:
-                            medians = comp_df[numeric_cols].median(numeric_only=True)
+                            medians = comp_df[["PER", "ROE %", "Rendement FCF %"]].median(numeric_only=True)
                             target = target_row.iloc[0]
 
                             c1, c2, c3 = st.columns(3)
                             with c1:
-                                render_metric_card("PER vs secteur", f"{format_metric(target.get('PER'), 'x')} / mediane {format_metric(medians.get('PER'), 'x')}", tone_lower(target.get("PER"), medians.get("PER")))
+                                render_metric_card("PER vs secteur", f"{format_metric(target.get('PER'), 'x')} / médiane {format_metric(medians.get('PER'), 'x')}", tone_lower(target.get("PER"), medians.get("PER")))
                             with c2:
-                                render_metric_card("ROE vs secteur", f"{format_metric(target.get('ROE %'), '%')} / mediane {format_metric(medians.get('ROE %'), '%')}", tone_higher(target.get("ROE %"), medians.get("ROE %")))
+                                render_metric_card("ROE vs secteur", f"{format_metric(target.get('ROE %'), '%')} / médiane {format_metric(medians.get('ROE %'), '%')}", tone_higher(target.get("ROE %"), medians.get("ROE %")))
                             with c3:
-                                render_metric_card("FCF Yield vs secteur", f"{format_metric(target.get('FCF Yield %'), '%')} / mediane {format_metric(medians.get('FCF Yield %'), '%')}", tone_higher(target.get("FCF Yield %"), medians.get("FCF Yield %")))
+                                render_metric_card("Rendement FCF vs secteur", f"{format_metric(target.get('Rendement FCF %'), '%')} / médiane {format_metric(medians.get('Rendement FCF %'), '%')}", tone_higher(target.get("Rendement FCF %"), medians.get("Rendement FCF %")))
 
-                        fig_sector = go.Figure()
-                        fig_sector.add_trace(go.Bar(x=comp_df["Ticker"], y=comp_df["Score"], marker_color="#2f80ff"))
-                        fig_sector.update_layout(
-                            height=420,
-                            template="plotly_dark",
-                            paper_bgcolor="rgba(0,0,0,0)",
-                            plot_bgcolor="rgba(13,17,19,0.72)",
-                            margin=dict(l=0, r=0, t=24, b=0),
-                            yaxis=dict(range=[0, 100], title="Score /100")
-                        )
-                        st.plotly_chart(fig_sector, use_container_width=True)
+                        scatter_df = comp_df.dropna(subset=["PER", "ROE %"])
+                        if not scatter_df.empty:
+                            fig_sector = go.Figure()
+                            fig_sector.add_trace(go.Scatter(
+                                x=scatter_df["PER"],
+                                y=scatter_df["ROE %"],
+                                mode="markers+text",
+                                text=scatter_df["Symbole"],
+                                textposition="top center",
+                                marker=dict(
+                                    size=18,
+                                    color=scatter_df["Note"],
+                                    colorscale=[[0, "#ff5757"], [0.5, "#ffd166"], [1, "#53ff9a"]],
+                                    cmin=0,
+                                    cmax=100,
+                                    line=dict(color="#f5f7f2", width=1)
+                                ),
+                                name="Pairs sectoriels"
+                            ))
+                            fig_sector.update_layout(
+                                height=460,
+                                template="plotly_dark",
+                                paper_bgcolor="rgba(0,0,0,0)",
+                                plot_bgcolor="rgba(13,17,19,0.72)",
+                                margin=dict(l=0, r=0, t=30, b=0),
+                                xaxis=dict(title="PER", gridcolor="rgba(255,255,255,0.07)"),
+                                yaxis=dict(title="ROE %", gridcolor="rgba(255,255,255,0.07)")
+                            )
+                            st.plotly_chart(fig_sector, use_container_width=True)
 
             with tabs[5]:
                 if is_etf:
-                    st.info("Analyse dividende detaillee disponible pour les actions individuelles.")
+                    st.info("Analyse dividende détaillée disponible pour les actions individuelles.")
                 else:
                     data = extract_stock_data(info, fx_rate)
                     dividend_df = get_dividend_history(ticker_input)
@@ -2029,33 +2116,56 @@ if mode == "ANALYSE INDIVIDUELLE":
 
                     c1, c2, c3, c4 = st.columns(4)
                     with c1:
-                        render_metric_card("Dividend Yield", format_metric(dividend_analysis["Dividend Yield"], "%"), tone_between(dividend_analysis["Dividend Yield"], 2, 5))
+                        render_metric_card("Rendement du dividende", format_metric(dividend_analysis["Rendement du dividende"], "%"), tone_between(dividend_analysis["Rendement du dividende"], 2, 5))
                     with c2:
                         render_metric_card("Payout ratio", format_metric(dividend_analysis["Payout"], "%"), tone_between(dividend_analysis["Payout"], 30, 60))
                     with c3:
                         render_metric_card("Croissance dividende", format_metric(dividend_analysis["Croissance dividende"], "%"), tone_higher(dividend_analysis["Croissance dividende"], 0))
                     with c4:
-                        render_metric_card("Securite dividende", dividend_analysis["Securite"], dividend_analysis["Tone"])
+                        render_metric_card("Sécurité dividende", dividend_analysis["Sécurité"], dividend_analysis["Tonalité"])
 
                     if dividend_df.empty:
                         st.info("Historique de dividendes indisponible.")
                     else:
                         st.dataframe(format_dataframe(dividend_df), use_container_width=True)
 
-                        fig_div = go.Figure()
-                        fig_div.add_trace(go.Bar(
-                            x=dividend_df["Annee"],
-                            y=dividend_df["Dividende annuel"],
-                            marker_color="#2f80ff",
-                            name="Dividende annuel"
-                        ))
+                        div_plot = dividend_df.copy()
+                        first_div = div_plot["Dividende annuel"].iloc[0]
+                        if first_div and first_div > 0:
+                            div_plot["Progression cumulée %"] = ((div_plot["Dividende annuel"] / first_div) - 1) * 100
+                        else:
+                            div_plot["Progression cumulée %"] = None
+
+                        fig_div = make_subplots(specs=[[{"secondary_y": True}]])
+                        fig_div.add_trace(
+                            go.Bar(
+                                x=div_plot["Année"],
+                                y=div_plot["Dividende annuel"],
+                                marker_color="#2f80ff",
+                                name="Dividende annuel"
+                            ),
+                            secondary_y=False
+                        )
+                        fig_div.add_trace(
+                            go.Scatter(
+                                x=div_plot["Année"],
+                                y=div_plot["Progression cumulée %"],
+                                mode="lines+markers",
+                                line=dict(color="#53ff9a", width=3),
+                                name="Progression cumulée"
+                            ),
+                            secondary_y=True
+                        )
                         fig_div.update_layout(
-                            height=420,
+                            height=430,
                             template="plotly_dark",
                             paper_bgcolor="rgba(0,0,0,0)",
                             plot_bgcolor="rgba(13,17,19,0.72)",
-                            margin=dict(l=0, r=0, t=24, b=0)
+                            margin=dict(l=0, r=0, t=30, b=0),
+                            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
                         )
+                        fig_div.update_yaxes(title_text="Dividende annuel", gridcolor="rgba(255,255,255,0.07)", secondary_y=False)
+                        fig_div.update_yaxes(title_text="Progression cumulée %", gridcolor="rgba(255,255,255,0.03)", secondary_y=True)
                         st.plotly_chart(fig_div, use_container_width=True)
 
             with tabs[6]:
@@ -2074,7 +2184,7 @@ if mode == "ANALYSE INDIVIDUELLE":
                 current_data = extract_etf_data(info, ticker_input, fx_rate) if is_etf else extract_stock_data(info, fx_rate)
                 st.markdown(generate_consensus_and_verdict(current_data, is_etf), unsafe_allow_html=True)
                 st.markdown("<hr>", unsafe_allow_html=True)
-                st.markdown("#### Presse financiere")
+                st.markdown("#### Presse financière")
 
                 news = get_press_news(ticker_input, nom)
 
@@ -2096,7 +2206,7 @@ if mode == "ANALYSE INDIVIDUELLE":
                 st.markdown("#### Export PDF")
 
                 if is_etf:
-                    st.info("Export PDF detaille actuellement optimise pour les actions individuelles.")
+                    st.info("Export PDF détaillé actuellement optimisé pour les actions individuelles.")
                 else:
                     data = extract_stock_data(info, fx_rate)
                     metrics_df = get_financial_metric_history(ticker_input, fx_rate)
@@ -2125,8 +2235,8 @@ if mode == "ANALYSE INDIVIDUELLE":
                     )
 
 
-elif mode == "TOP SELECTION":
-    st.markdown("#### Selection algorithmique")
+elif mode == "TOP SÉLECTION":
+    st.markdown("#### Sélection algorithmique")
 
     c1, c2 = st.columns([1, 1])
 
@@ -2134,15 +2244,15 @@ elif mode == "TOP SELECTION":
         asset_type = st.selectbox("Univers", ["ACTIONS", "SMALL CAPS", "ETF"])
 
     with c2:
-        top_limit = st.slider("Nombre de resultats", 5, 20, 10)
+        top_limit = st.slider("Nombre de résultats", 5, 20, 10)
 
-    st.caption(f"Actualisation live a chaque rechargement de page : {pd.Timestamp.now().strftime('%d/%m/%Y %H:%M:%S')}")
+    st.caption(f"Actualisation à chaque rechargement de page : {pd.Timestamp.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
-    with st.spinner("Scan live du marche en cours..."):
+    with st.spinner("Analyse du marché en cours..."):
         ranking = rank_universe(asset_type, top_limit)
 
     if ranking.empty:
-        st.error("Aucune donnee exploitable pour cet univers.")
+        st.error("Aucune donnée exploitable pour cet univers.")
     else:
         ranking = numeric_df_for_display(ranking)
         best = ranking.iloc[0]
@@ -2150,10 +2260,10 @@ elif mode == "TOP SELECTION":
         c1, c2, c3 = st.columns(3)
 
         with c1:
-            render_metric_card("Meilleur actif", f"{best['Ticker']}")
+            render_metric_card("Meilleur actif", f"{best['Symbole']}")
 
         with c2:
-            render_metric_card("Score", format_metric(best["Score"], "/100"), tone_score(best["Score"]))
+            render_metric_card("Note", format_metric(best["Note"], "/100"), tone_score(best["Note"]))
 
         with c3:
             render_metric_card("Prix", format_metric(best.get("Prix €"), "€"))
@@ -2167,10 +2277,10 @@ elif mode == "TOP SELECTION":
 
         fig_rank.add_trace(
             go.Bar(
-                x=ranking["Ticker"],
-                y=ranking["Score"],
+                x=ranking["Symbole"],
+                y=ranking["Note"],
                 marker=dict(
-                    color=ranking["Score"],
+                    color=ranking["Note"],
                     colorscale=[
                         [0, "#ff5757"],
                         [0.5, "#ffd166"],
@@ -2179,7 +2289,7 @@ elif mode == "TOP SELECTION":
                     cmin=0,
                     cmax=100
                 ),
-                text=ranking["Score"].round(0),
+                text=ranking["Note"].round(0),
                 textposition="outside"
             )
         )
@@ -2190,7 +2300,7 @@ elif mode == "TOP SELECTION":
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(13,17,19,0.72)",
             margin=dict(l=0, r=0, t=24, b=0),
-            yaxis=dict(range=[0, 100], gridcolor="rgba(255,255,255,0.07)", title="Score /100"),
+            yaxis=dict(range=[0, 100], gridcolor="rgba(255,255,255,0.07)", title="Note /100"),
             xaxis=dict(showgrid=False)
         )
 
@@ -2202,7 +2312,7 @@ elif mode == "COMPARER":
 
     tickers_input = st.text_area(
         "",
-        placeholder="Entre tes tickers separes par une virgule : AAPL, MSFT, LVMH.PA, CW8.PA",
+        placeholder="Entre tes symboles séparés par une virgule : AAPL, MSFT, LVMH.PA, CW8.PA",
         label_visibility="collapsed",
         height=90
     ).upper()
@@ -2210,16 +2320,16 @@ elif mode == "COMPARER":
     c1, c2, c3 = st.columns(3)
 
     with c1:
-        sort_metric = st.selectbox("Tri principal", ["SCORE", "PRIX (€)", "PER", "ROE (%)", "MARGE NETTE (%)", "FCF YIELD (%)"])
+        sort_metric = st.selectbox("Tri principal", ["NOTE", "PRIX (€)", "PER", "ROE (%)", "MARGE NETTE (%)", "RENDEMENT FCF (%)"])
 
     with c2:
-        min_score = st.slider("Score minimum", 0, 100, 0)
+        min_score = st.slider("Note minimum", 0, 100, 0)
 
     with c3:
-        show_chart = st.selectbox("Vue graphique", ["Score", "Score vs PER", "Score vs marge nette", "Score vs FCF Yield"])
+        show_chart = st.selectbox("Vue graphique", ["Note", "Note vs PER", "Note vs marge nette", "Note vs rendement FCF"])
 
     if tickers_input and st.button("Comparer les actifs"):
-        with st.spinner("Acquisition et comparaison des donnees..."):
+        with st.spinner("Acquisition et comparaison des données..."):
             t_list = [t.strip().upper() for t in tickers_input.replace("\n", ",").split(",") if t.strip()]
             res = []
 
@@ -2240,34 +2350,34 @@ elif mode == "COMPARER":
                         d = extract_etf_data(info, t, fx)
 
                         res.append({
-                            "TICKER": t,
+                            "SYMBOLE": t,
                             "NOM": info.get("shortName", t),
-                            "TYPE": "ETF",
-                            "SCORE": d["Score"],
+                            "CATÉGORIE": "ETF",
+                            "NOTE": d["Score"],
                             "PRIX (€)": d["Prix"],
-                            "MARKET CAP / AUM (M€)": d["AUM"],
+                            "CAPITALISATION / ACTIFS (M€)": d["AUM"],
                             "PER": None,
                             "ROE (%)": None,
                             "MARGE NETTE (%)": None,
                             "DETTE/EBITDA": None,
-                            "FCF YIELD (%)": None,
+                            "RENDEMENT FCF (%)": None,
                             "FRAIS (%)": d["TER"]
                         })
                     else:
                         d = extract_stock_data(info, fx)
 
                         res.append({
-                            "TICKER": t,
+                            "SYMBOLE": t,
                             "NOM": info.get("shortName", t),
-                            "TYPE": "EQUITY",
-                            "SCORE": d["Score"],
+                            "CATÉGORIE": "ACTION",
+                            "NOTE": d["Score"],
                             "PRIX (€)": d["Prix"],
-                            "MARKET CAP / AUM (M€)": d["MarketCap"],
+                            "CAPITALISATION / ACTIFS (M€)": d["MarketCap"],
                             "PER": d["PER_Actuel"],
                             "ROE (%)": d["ROE"],
                             "MARGE NETTE (%)": d["Marge_Nette"],
                             "DETTE/EBITDA": d["Levier"] if isinstance(d["Levier"], (int, float)) else None,
-                            "FCF YIELD (%)": d["FCF_Yield"],
+                            "RENDEMENT FCF (%)": d["FCF_Yield"],
                             "FRAIS (%)": None
                         })
                 except Exception:
@@ -2280,38 +2390,37 @@ elif mode == "COMPARER":
 
     if st.session_state.compare_raw_df is not None and not st.session_state.compare_raw_df.empty:
         df = numeric_df_for_display(st.session_state.compare_raw_df)
-        df = df[df["SCORE"] >= min_score]
+        df = df[df["NOTE"] >= min_score]
 
         if df.empty:
-            st.warning("Aucun actif ne passe le filtre de score minimum.")
+            st.warning("Aucun actif ne passe le filtre de note minimum.")
         else:
-            sort_column = sort_metric
-            if sort_column in df.columns:
-                df = df.sort_values(by=sort_column, ascending=False, na_position="last")
+            if sort_metric in df.columns:
+                df = df.sort_values(by=sort_metric, ascending=False, na_position="last")
 
             c1, c2, c3, c4 = st.columns(4)
             with c1:
-                render_metric_card("Actifs compares", str(len(df)))
+                render_metric_card("Actifs comparés", str(len(df)))
             with c2:
-                render_metric_card("Meilleur score", format_metric(df["SCORE"].max(), "/100"), tone_score(df["SCORE"].max()))
+                render_metric_card("Meilleure note", format_metric(df["NOTE"].max(), "/100"), tone_score(df["NOTE"].max()))
             with c3:
-                render_metric_card("Score moyen", format_metric(df["SCORE"].mean(), "/100"), tone_score(df["SCORE"].mean()))
+                render_metric_card("Note moyenne", format_metric(df["NOTE"].mean(), "/100"), tone_score(df["NOTE"].mean()))
             with c4:
-                render_metric_card("Leader", str(df.iloc[0]["TICKER"]))
+                render_metric_card("Leader", str(df.iloc[0]["SYMBOLE"]))
 
             st.dataframe(format_dataframe(df), use_container_width=True, height=460)
 
-            button_df = df.rename(columns={"TICKER": "Ticker", "NOM": "Nom"})
+            button_df = df.rename(columns={"SYMBOLE": "Symbole", "NOM": "Nom"})
             render_open_asset_buttons(button_df, "comparer_open")
 
-            if show_chart == "Score":
+            if show_chart == "Note":
                 fig = go.Figure()
                 fig.add_trace(
                     go.Bar(
-                        x=df["TICKER"],
-                        y=df["SCORE"],
+                        x=df["SYMBOLE"],
+                        y=df["NOTE"],
                         marker=dict(
-                            color=df["SCORE"],
+                            color=df["NOTE"],
                             colorscale=[
                                 [0, "#ff5757"],
                                 [0.5, "#ffd166"],
@@ -2322,39 +2431,39 @@ elif mode == "COMPARER":
                         )
                     )
                 )
-                fig.update_yaxes(range=[0, 100], title="Score /100")
+                fig.update_yaxes(range=[0, 100], title="Note /100")
 
-            elif show_chart == "Score vs PER":
+            elif show_chart == "Note vs PER":
                 chart_df = df.dropna(subset=["PER"])
                 fig = go.Figure()
                 fig.add_trace(
                     go.Scatter(
                         x=chart_df["PER"],
-                        y=chart_df["SCORE"],
+                        y=chart_df["NOTE"],
                         mode="markers+text",
-                        text=chart_df["TICKER"],
+                        text=chart_df["SYMBOLE"],
                         textposition="top center",
                         marker=dict(size=16, color="#2f80ff", line=dict(color="#f5f7f2", width=1))
                     )
                 )
                 fig.update_xaxes(title="PER")
-                fig.update_yaxes(range=[0, 100], title="Score /100")
+                fig.update_yaxes(range=[0, 100], title="Note /100")
 
-            elif show_chart == "Score vs FCF Yield":
-                chart_df = df.dropna(subset=["FCF YIELD (%)"])
+            elif show_chart == "Note vs rendement FCF":
+                chart_df = df.dropna(subset=["RENDEMENT FCF (%)"])
                 fig = go.Figure()
                 fig.add_trace(
                     go.Scatter(
-                        x=chart_df["FCF YIELD (%)"],
-                        y=chart_df["SCORE"],
+                        x=chart_df["RENDEMENT FCF (%)"],
+                        y=chart_df["NOTE"],
                         mode="markers+text",
-                        text=chart_df["TICKER"],
+                        text=chart_df["SYMBOLE"],
                         textposition="top center",
                         marker=dict(size=16, color="#2f80ff", line=dict(color="#f5f7f2", width=1))
                     )
                 )
-                fig.update_xaxes(title="FCF Yield (%)")
-                fig.update_yaxes(range=[0, 100], title="Score /100")
+                fig.update_xaxes(title="Rendement FCF (%)")
+                fig.update_yaxes(range=[0, 100], title="Note /100")
 
             else:
                 chart_df = df.dropna(subset=["MARGE NETTE (%)"])
@@ -2362,15 +2471,15 @@ elif mode == "COMPARER":
                 fig.add_trace(
                     go.Scatter(
                         x=chart_df["MARGE NETTE (%)"],
-                        y=chart_df["SCORE"],
+                        y=chart_df["NOTE"],
                         mode="markers+text",
-                        text=chart_df["TICKER"],
+                        text=chart_df["SYMBOLE"],
                         textposition="top center",
                         marker=dict(size=16, color="#2f80ff", line=dict(color="#f5f7f2", width=1))
                     )
                 )
                 fig.update_xaxes(title="Marge nette (%)")
-                fig.update_yaxes(range=[0, 100], title="Score /100")
+                fig.update_yaxes(range=[0, 100], title="Note /100")
 
             fig.update_layout(
                 height=440,
@@ -2389,7 +2498,7 @@ elif mode == "COMPARER":
             st.download_button(
                 "Exporter la matrice CSV",
                 data=csv,
-                file_name="alpha_matrix.csv",
+                file_name="matrice_alpha.csv",
                 mime="text/csv"
             )
     elif tickers_input:
