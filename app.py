@@ -457,10 +457,17 @@ TOP_ETFS = [
     "PAEEM.PA", "PUST.PA", "MSE.PA"
 ]
 
+TICKER_ALIASES = {
+    "2FE.MU": ["RACE.MI", "RACE"],
+    "2FE.F": ["RACE.MI", "RACE"],
+    "2FE.BE": ["RACE.MI", "RACE"],
+    "2FE.DE": ["RACE.MI", "RACE"],
+}
+
 SECTOR_PEERS = {
     "TECHNOLOGY": ["MSFT", "AAPL", "GOOGL", "NVDA", "META", "ORCL", "ADBE"],
     "COMMUNICATION SERVICES": ["GOOGL", "META", "NFLX", "DIS", "TMUS", "VZ"],
-    "CONSUMER CYCLICAL": ["AMZN", "TSLA", "HD", "NKE", "MCD", "SBUX"],
+    "CONSUMER CYCLICAL": ["AMZN", "TSLA", "HD", "NKE", "MCD", "SBUX", "RACE.MI"],
     "CONSUMER DEFENSIVE": ["PG", "KO", "PEP", "COST", "WMT", "UL"],
     "HEALTHCARE": ["LLY", "UNH", "JNJ", "MRK", "ABBV", "TMO"],
     "FINANCIAL SERVICES": ["JPM", "BAC", "V", "MA", "MS", "GS"],
@@ -469,7 +476,7 @@ SECTOR_PEERS = {
     "BASIC MATERIALS": ["LIN", "RIO", "BHP", "NEM", "FCX", "AI.PA"],
     "UTILITIES": ["NEE", "DUK", "SO", "AEP", "D", "ENGI.PA"],
     "REAL ESTATE": ["PLD", "AMT", "EQIX", "O", "SPG", "WELL"],
-    "LUXURY": ["MC.PA", "RMS.PA", "KER.PA", "OR.PA", "RI.PA"]
+    "LUXURY": ["RACE.MI", "MC.PA", "RMS.PA", "KER.PA", "OR.PA", "RI.PA"]
 }
 
 MODULES = ["ANALYSE INDIVIDUELLE", "TOP SÉLECTION", "COMPARER"]
@@ -571,6 +578,60 @@ def get_ratio_tooltip(title):
 
 def get_metric_tooltip(metric_name):
     return METRIC_TOOLTIPS.get(str(metric_name), None)
+
+
+def has_value(val):
+    if val is None or val == "":
+        return False
+    try:
+        if pd.isna(val):
+            return False
+    except Exception:
+        pass
+    return True
+
+
+def info_completeness(info):
+    if not info:
+        return 0
+
+    keys = [
+        "currentPrice", "regularMarketPrice", "previousClose", "marketCap",
+        "trailingPE", "forwardPE", "priceToSalesTrailing12Months", "priceToBook",
+        "enterpriseToEbitda", "grossMargins", "operatingMargins", "profitMargins",
+        "returnOnEquity", "returnOnAssets", "totalDebt", "totalCash", "ebitda",
+        "freeCashflow", "currentRatio", "quickRatio", "debtToEquity",
+        "revenueGrowth", "earningsGrowth", "payoutRatio", "dividendYield"
+    ]
+
+    return sum(1 for key in keys if has_value(info.get(key)))
+
+
+def resolve_analysis_ticker(ticker_symbol):
+    ticker = ticker_symbol.upper().strip()
+    candidates = [ticker] + TICKER_ALIASES.get(ticker, [])
+
+    best_info = None
+    best_ticker = ticker
+    best_score = -1
+
+    for candidate in candidates:
+        info = fetch_info_with_retry(candidate)
+        score = info_completeness(info)
+
+        if score > best_score:
+            best_info = info
+            best_ticker = candidate
+            best_score = score
+
+    if not best_info:
+        return None, ticker, None
+
+    note = None
+    if best_ticker != ticker:
+        note = f"Données fondamentales enrichies via {best_ticker}, car {ticker} est une cotation secondaire avec données Yahoo incomplètes."
+
+    return best_info, best_ticker, note
 
 
 def resolve_fx_rate(currency_code):
@@ -924,6 +985,8 @@ def fetch_info_live(ticker_symbol, retries=3, backoff=1):
                 or "regularMarketPrice" in info
                 or "currentPrice" in info
                 or "previousClose" in info
+                or "shortName" in info
+                or "longName" in info
             ):
                 return info
 
@@ -945,7 +1008,21 @@ def fetch_info_with_retry(ticker_symbol, retries=3, backoff=1):
 
 @st.cache_data(ttl=900)
 def get_price_history(ticker_symbol, period):
-    return yf.Ticker(ticker_symbol).history(period=period)
+    try:
+        return yf.Ticker(ticker_symbol).history(period=period)
+    except Exception:
+        return pd.DataFrame()
+
+
+def get_price_history_with_fallback(primary_ticker, data_ticker, period):
+    hist = get_price_history(primary_ticker, period)
+    used = primary_ticker
+
+    if hist.empty and data_ticker != primary_ticker:
+        hist = get_price_history(data_ticker, period)
+        used = data_ticker
+
+    return hist, used
 
 
 @st.cache_data(ttl=1800)
@@ -1022,7 +1099,16 @@ def get_share_count_trend(ticker_symbol):
     return None
 
 
-def extract_stock_data(info, fx_rate):
+def latest_value_from_df(df, col):
+    if df is None or df.empty or col not in df.columns:
+        return None
+    serie = df[col].dropna()
+    if serie.empty:
+        return None
+    return float(serie.iloc[-1])
+
+
+def extract_stock_data(info, fx_rate, ticker_symbol=None):
     d = {}
 
     raw_price = info.get("currentPrice") or info.get("regularMarketPrice") or info.get("previousClose")
@@ -1063,11 +1149,6 @@ def extract_stock_data(info, fx_rate):
     else:
         d["Levier"] = None
 
-    if d["FCF"] is not None and d["MarketCap"] is not None and d["MarketCap"] > 0:
-        d["FCF_Yield"] = round((d["FCF"] / d["MarketCap"]) * 100, 2)
-    else:
-        d["FCF_Yield"] = None
-
     d["Current_Ratio"] = safe_float(info.get("currentRatio"))
     d["Quick_Ratio"] = safe_float(info.get("quickRatio"))
     d["Debt_Equity"] = safe_float(info.get("debtToEquity"))
@@ -1088,6 +1169,18 @@ def extract_stock_data(info, fx_rate):
 
     d["Sector"] = safe_str(info.get("sector")).upper()
     d["Industry"] = safe_str(info.get("industry")).upper()
+
+    if ticker_symbol:
+        cashflow_df = get_cashflow_metrics(ticker_symbol, fx_rate)
+        if d["FCF"] is None:
+            latest_fcf = latest_value_from_df(cashflow_df, "Free cash flow")
+            if latest_fcf is not None:
+                d["FCF"] = round(latest_fcf, 2)
+
+    if d["FCF"] is not None and d["MarketCap"] is not None and d["MarketCap"] > 0:
+        d["FCF_Yield"] = round((d["FCF"] / d["MarketCap"]) * 100, 2)
+    else:
+        d["FCF_Yield"] = None
 
     score_detail, score = score_stock(d)
     d["Score_Detail"] = score_detail
@@ -1238,7 +1331,7 @@ def rank_universe(asset_type, limit=12):
 
     for ticker in universe:
         try:
-            info = fetch_info_live(ticker)
+            info, data_ticker, _ = resolve_analysis_ticker(ticker)
 
             if not info:
                 continue
@@ -1247,7 +1340,7 @@ def rank_universe(asset_type, limit=12):
             quote_type = info.get("quoteType", "")
 
             if asset_type == "ETF" or quote_type == "ETF":
-                d = extract_etf_data(info, ticker, fx)
+                d = extract_etf_data(info, data_ticker, fx)
 
                 rows.append({
                     "Symbole": ticker,
@@ -1260,7 +1353,7 @@ def rank_universe(asset_type, limit=12):
                     "Régime": d["PEA"]
                 })
             else:
-                d = extract_stock_data(info, fx)
+                d = extract_stock_data(info, fx, data_ticker)
 
                 if asset_type == "SMALL CAPS":
                     market_cap = d.get("MarketCap")
@@ -1350,6 +1443,9 @@ def get_financial_metric_history(ticker_symbol, fx_rate):
 def get_sector_peers(sector, ticker):
     sector = safe_str(sector).upper()
 
+    if ticker.upper() in ["RACE", "RACE.MI", "2FE.MU", "2FE.F", "2FE.BE"]:
+        return ["RACE.MI", "MC.PA", "RMS.PA", "KER.PA", "BMW.DE", "MBG.DE", "TSLA"]
+
     if ticker.upper().endswith(".PA") and sector in ["CONSUMER CYCLICAL", "CONSUMER DEFENSIVE"]:
         return ["MC.PA", "RMS.PA", "KER.PA", "OR.PA", "RI.PA", "CA.PA"]
 
@@ -1363,17 +1459,17 @@ def get_sector_peers(sector, ticker):
 @st.cache_data(ttl=1800)
 def get_sector_comparison(ticker_symbol, sector):
     peers = get_sector_peers(sector, ticker_symbol)
-    universe = [ticker_symbol] + peers[:6]
+    universe = [ticker_symbol] + [p for p in peers if p.upper() != ticker_symbol.upper()][:6]
     rows = []
 
     for t in universe:
         try:
-            info = fetch_info_with_retry(t)
+            info, data_ticker, _ = resolve_analysis_ticker(t)
             if not info:
                 continue
 
             fx = get_fx_rate(info.get("currency", "USD"))
-            d = extract_stock_data(info, fx)
+            d = extract_stock_data(info, fx, data_ticker)
 
             rows.append({
                 "Symbole": t,
@@ -1448,6 +1544,23 @@ def calculate_dcf(data, growth_rate, discount_rate, terminal_growth, years, marg
 
 def get_risk_alerts(data, metrics_df, share_dilution):
     alerts = []
+    missing = []
+
+    required_fields = {
+        "PER": data.get("PER_Actuel"),
+        "marge nette": data.get("Marge_Nette"),
+        "dette nette / EBITDA": data.get("Levier"),
+        "free cash flow": data.get("FCF"),
+        "payout": data.get("Payout"),
+        "current ratio": data.get("Current_Ratio")
+    }
+
+    for label, value in required_fields.items():
+        if value is None:
+            missing.append(label)
+
+    if missing:
+        alerts.append(("warning", "Données fondamentales incomplètes chez Yahoo Finance : " + ", ".join(missing) + "."))
 
     levier = data.get("Levier")
     if isinstance(levier, (int, float)) and levier > 4:
@@ -1729,23 +1842,31 @@ st.markdown("<br>", unsafe_allow_html=True)
 if mode == "ANALYSE INDIVIDUELLE":
     ticker_input = st.text_input(
         "",
-        placeholder="Rechercher un actif : AAPL, MSFT, LVMH.PA, CW8.PA...",
+        placeholder="Rechercher un actif : AAPL, MSFT, LVMH.PA, 2FE.MU...",
         label_visibility="collapsed",
         key="analysis_ticker"
     ).upper().strip()
 
     if ticker_input:
         with st.spinner("Acquisition des données en cours..."):
-            info = fetch_info_with_retry(ticker_input)
+            info, data_ticker, resolution_note = resolve_analysis_ticker(ticker_input)
 
             if not info:
                 st.error("Impossible de récupérer les données. Vérifie le symbole ou réessaie dans quelques minutes.")
                 st.stop()
 
+            if resolution_note:
+                st.info(resolution_note)
+
             nom = info.get("longName", info.get("shortName", ticker_input)).upper()
             devise = info.get("currency", "USD").upper()
             fx_rate = get_fx_rate(devise)
             is_etf = info.get("quoteType") == "ETF" or "totalAssets" in info
+
+            if is_etf:
+                base_data = extract_etf_data(info, data_ticker, fx_rate)
+            else:
+                base_data = extract_stock_data(info, fx_rate, data_ticker)
 
             st.markdown(
                 f"<h2>{nom} <span style='color:#2f80ff; font-size:1.05rem;'>// {ticker_input}</span></h2>",
@@ -1766,7 +1887,7 @@ if mode == "ANALYSE INDIVIDUELLE":
 
             with tabs[0]:
                 if is_etf:
-                    data = extract_etf_data(info, ticker_input, fx_rate)
+                    data = base_data
 
                     if data["AUM"] and data["AUM"] < 100:
                         st.warning("Liquidité faible : actifs sous gestion inférieurs à 100 M€.")
@@ -1790,7 +1911,7 @@ if mode == "ANALYSE INDIVIDUELLE":
                         render_metric_card("Réplication", data["Replication"], "positive" if data["Replication"] == "PHYSIQUE" else None)
 
                 else:
-                    data = extract_stock_data(info, fx_rate)
+                    data = base_data
                     score_tone = tone_score(data["Score"])
 
                     c1, c2, c3 = st.columns([1.15, 2, 2])
@@ -1857,9 +1978,12 @@ if mode == "ANALYSE INDIVIDUELLE":
                         render_metric_card("Rendement du dividende", format_metric(data["Dividend_Yield"], "%"), tone_between(data["Dividend_Yield"], 2, 5))
 
             with tabs[1]:
-                hist = get_price_history(ticker_input, "5y")
+                hist, hist_ticker = get_price_history_with_fallback(ticker_input, data_ticker, "5y")
 
                 if len(hist) > 200:
+                    if hist_ticker != ticker_input:
+                        st.info(f"Historique technique affiché via {hist_ticker}, car l'historique de {ticker_input} est incomplet.")
+
                     hist["Close_EUR"] = hist["Close"] * fx_rate
                     hist["SMA50"] = hist["Close_EUR"].rolling(50).mean()
                     hist["SMA200"] = hist["Close_EUR"].rolling(200).mean()
@@ -1902,8 +2026,9 @@ if mode == "ANALYSE INDIVIDUELLE":
                 if is_etf:
                     st.info("L'évolution des métriques fondamentales est disponible pour les actions. Pour les ETF, utilise l'onglet Technique.")
                 else:
-                    metrics_df = get_financial_metric_history(ticker_input, fx_rate)
-                    cashflow_df = get_cashflow_metrics(ticker_input, fx_rate)
+                    data = base_data
+                    metrics_df = get_financial_metric_history(data_ticker, fx_rate)
+                    cashflow_df = get_cashflow_metrics(data_ticker, fx_rate)
 
                     if not cashflow_df.empty:
                         metrics_df = metrics_df.join(cashflow_df, how="outer")
@@ -1912,7 +2037,7 @@ if mode == "ANALYSE INDIVIDUELLE":
                             metrics_df["Rendement FCF %"] = (metrics_df["Free cash flow"] / data["MarketCap"]) * 100
 
                     if metrics_df.empty:
-                        st.error("Données financières indisponibles pour cet actif.")
+                        st.warning("Données financières historiques indisponibles pour cet actif chez Yahoo Finance.")
                     else:
                         available_metrics = list(metrics_df.columns)
                         default_metrics = [
@@ -1962,7 +2087,7 @@ if mode == "ANALYSE INDIVIDUELLE":
                 if is_etf:
                     st.info("Le DCF est surtout pertinent pour les actions individuelles, pas pour les ETF.")
                 else:
-                    data = extract_stock_data(info, fx_rate)
+                    data = base_data
                     st.markdown("#### Valorisation DCF simplifiée")
 
                     c1, c2, c3, c4, c5 = st.columns(5)
@@ -2049,10 +2174,10 @@ if mode == "ANALYSE INDIVIDUELLE":
                 if is_etf:
                     st.info("Comparaison sectorielle disponible pour les actions individuelles.")
                 else:
-                    data = extract_stock_data(info, fx_rate)
+                    data = base_data
                     st.markdown("#### Comparaison sectorielle automatique")
 
-                    comp_df = get_sector_comparison(ticker_input, data["Sector"])
+                    comp_df = get_sector_comparison(data_ticker, data["Sector"])
 
                     if comp_df.empty:
                         st.error("Comparaison sectorielle indisponible.")
@@ -2060,7 +2185,7 @@ if mode == "ANALYSE INDIVIDUELLE":
                         comp_df = numeric_df_for_display(comp_df)
                         st.dataframe(format_dataframe(comp_df), use_container_width=True, height=430)
 
-                        target_row = comp_df[comp_df["Symbole"].str.upper() == ticker_input.upper()]
+                        target_row = comp_df[comp_df["Symbole"].str.upper() == data_ticker.upper()]
 
                         if not target_row.empty:
                             medians = comp_df[["PER", "ROE %", "Rendement FCF %"]].median(numeric_only=True)
@@ -2108,8 +2233,8 @@ if mode == "ANALYSE INDIVIDUELLE":
                 if is_etf:
                     st.info("Analyse dividende détaillée disponible pour les actions individuelles.")
                 else:
-                    data = extract_stock_data(info, fx_rate)
-                    dividend_df = get_dividend_history(ticker_input)
+                    data = base_data
+                    dividend_df = get_dividend_history(data_ticker)
                     dividend_analysis = build_dividend_analysis(data, dividend_df)
 
                     st.markdown("#### Analyse dividende")
@@ -2172,21 +2297,21 @@ if mode == "ANALYSE INDIVIDUELLE":
                 if is_etf:
                     st.info("Alertes risques surtout disponibles pour les actions individuelles.")
                 else:
-                    data = extract_stock_data(info, fx_rate)
-                    metrics_df = get_financial_metric_history(ticker_input, fx_rate)
-                    share_dilution = get_share_count_trend(ticker_input)
+                    data = base_data
+                    metrics_df = get_financial_metric_history(data_ticker, fx_rate)
+                    share_dilution = get_share_count_trend(data_ticker)
                     alerts = get_risk_alerts(data, metrics_df, share_dilution)
 
                     st.markdown("#### Alertes risques")
                     render_risk_alerts(alerts)
 
             with tabs[7]:
-                current_data = extract_etf_data(info, ticker_input, fx_rate) if is_etf else extract_stock_data(info, fx_rate)
+                current_data = base_data
                 st.markdown(generate_consensus_and_verdict(current_data, is_etf), unsafe_allow_html=True)
                 st.markdown("<hr>", unsafe_allow_html=True)
                 st.markdown("#### Presse financière")
 
-                news = get_press_news(ticker_input, nom)
+                news = get_press_news(data_ticker, nom)
 
                 if news:
                     for n in news:
@@ -2208,11 +2333,11 @@ if mode == "ANALYSE INDIVIDUELLE":
                 if is_etf:
                     st.info("Export PDF détaillé actuellement optimisé pour les actions individuelles.")
                 else:
-                    data = extract_stock_data(info, fx_rate)
-                    metrics_df = get_financial_metric_history(ticker_input, fx_rate)
-                    dividend_df = get_dividend_history(ticker_input)
+                    data = base_data
+                    metrics_df = get_financial_metric_history(data_ticker, fx_rate)
+                    dividend_df = get_dividend_history(data_ticker)
                     dividend_analysis = build_dividend_analysis(data, dividend_df)
-                    share_dilution = get_share_count_trend(ticker_input)
+                    share_dilution = get_share_count_trend(data_ticker)
                     alerts = get_risk_alerts(data, metrics_df, share_dilution)
 
                     dcf_result, _ = calculate_dcf(
@@ -2312,7 +2437,7 @@ elif mode == "COMPARER":
 
     tickers_input = st.text_area(
         "",
-        placeholder="Entre tes symboles séparés par une virgule : AAPL, MSFT, LVMH.PA, CW8.PA",
+        placeholder="Entre tes symboles séparés par une virgule : AAPL, MSFT, LVMH.PA, 2FE.MU",
         label_visibility="collapsed",
         height=90
     ).upper()
@@ -2337,7 +2462,7 @@ elif mode == "COMPARER":
 
             for i, t in enumerate(t_list):
                 try:
-                    info = fetch_info_with_retry(t)
+                    info, data_ticker, _ = resolve_analysis_ticker(t)
 
                     if not info:
                         progress_bar.progress((i + 1) / len(t_list))
@@ -2347,7 +2472,7 @@ elif mode == "COMPARER":
                     is_etf = info.get("quoteType") == "ETF" or "totalAssets" in info
 
                     if is_etf:
-                        d = extract_etf_data(info, t, fx)
+                        d = extract_etf_data(info, data_ticker, fx)
 
                         res.append({
                             "SYMBOLE": t,
@@ -2364,7 +2489,7 @@ elif mode == "COMPARER":
                             "FRAIS (%)": d["TER"]
                         })
                     else:
-                        d = extract_stock_data(info, fx)
+                        d = extract_stock_data(info, fx, data_ticker)
 
                         res.append({
                             "SYMBOLE": t,
