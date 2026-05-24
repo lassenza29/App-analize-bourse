@@ -26,414 +26,379 @@ st.set_page_config(
 st.markdown("""
 <style>
     :root {
-        --bg: #050607;
-        --panel: #0d1113;
-        --text: #f5f7f2;
-        --muted: #90999a;
-        --line: rgba(255,255,255,0.10);
-        --accent: #2f80ff;
-        --accent-soft: rgba(47,128,255,0.20);
-        --green: #53ff9a;
-        --red: #ff5757;
-        --yellow: #ffd166;
+        --bg:#050607;
+        --text:#f5f7f2;
+        --muted:#90999a;
+        --line:rgba(255,255,255,.10);
+        --accent:#2f80ff;
+        --accent-soft:rgba(47,128,255,.20);
+        --green:#53ff9a;
+        --red:#ff5757;
+        --yellow:#ffd166;
     }
 
     html, body, [class*="css"] {
-        font-family: "Avenir Next", "Helvetica Neue", Helvetica, Arial, sans-serif;
+        font-family:"Avenir Next","Helvetica Neue",Helvetica,Arial,sans-serif;
     }
 
     .stApp {
         background:
-            radial-gradient(circle at 15% 8%, rgba(47,128,255,0.34), transparent 31%),
-            radial-gradient(circle at 86% 5%, rgba(30,95,255,0.30), transparent 35%),
-            linear-gradient(180deg, #07142a 0%, #050914 44%, #030405 100%);
-        color: var(--text);
+            radial-gradient(circle at 15% 8%, rgba(47,128,255,.34), transparent 31%),
+            radial-gradient(circle at 86% 5%, rgba(30,95,255,.30), transparent 35%),
+            linear-gradient(180deg,#07142a 0%,#050914 44%,#030405 100%);
+        color:var(--text);
     }
 
     .block-container {
-        padding-top: 5.2rem !important;
-        padding-bottom: 4rem !important;
-        max-width: 1280px;
+        padding-top:5.2rem!important;
+        padding-bottom:4rem!important;
+        max-width:1280px;
     }
 
     [data-testid="stHeader"] {
-        background: rgba(5,8,14,0.74);
-        backdrop-filter: blur(18px);
-        border-bottom: 1px solid rgba(255,255,255,0.06);
+        background:rgba(5,8,14,.74);
+        backdrop-filter:blur(18px);
+        border-bottom:1px solid rgba(255,255,255,.06);
     }
 
-    h1, h2, h3, h4, h5 {
-        color: var(--text) !important;
-        font-weight: 700 !important;
-        letter-spacing: 0 !important;
-        text-transform: none !important;
-    }
-
-    h2 {
-        font-size: 1.85rem !important;
-        margin-bottom: 0.9rem !important;
+    h1,h2,h3,h4,h5 {
+        color:var(--text)!important;
+        font-weight:700!important;
+        letter-spacing:0!important;
+        text-transform:none!important;
     }
 
     .terminal-shell {
         background:
-            radial-gradient(circle at 80% 20%, rgba(47,128,255,0.24), transparent 35%),
-            linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)),
-            rgba(13,17,19,0.86);
-        border: 1px solid rgba(255,255,255,0.12);
-        border-radius: 22px;
-        padding: 22px 24px;
-        box-shadow: 0 26px 80px rgba(0,0,0,0.42);
-        margin-bottom: 24px;
+            radial-gradient(circle at 80% 20%, rgba(47,128,255,.24), transparent 35%),
+            linear-gradient(135deg, rgba(255,255,255,.08), rgba(255,255,255,.02)),
+            rgba(13,17,19,.86);
+        border:1px solid rgba(255,255,255,.12);
+        border-radius:22px;
+        padding:22px 24px;
+        box-shadow:0 26px 80px rgba(0,0,0,.42);
+        margin-bottom:24px;
     }
 
     .terminal-topline {
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        gap: 16px;
-        margin-bottom: 14px;
+        display:flex;
+        align-items:center;
+        justify-content:flex-end;
+        gap:16px;
+        margin-bottom:14px;
     }
 
     .status-pill {
-        color: #f5f7f2;
-        background: var(--accent);
-        border-radius: 999px;
-        padding: 7px 12px;
-        font-size: 0.72rem;
-        font-weight: 900;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        white-space: nowrap;
-        box-shadow: 0 10px 30px rgba(47,128,255,0.35);
+        color:#f5f7f2;
+        background:var(--accent);
+        border-radius:999px;
+        padding:7px 12px;
+        font-size:.72rem;
+        font-weight:900;
+        text-transform:uppercase;
+        letter-spacing:.06em;
+        white-space:nowrap;
+        box-shadow:0 10px 30px rgba(47,128,255,.35);
     }
 
     .hero-title {
-        font-size: clamp(2.2rem, 5vw, 4.8rem);
-        line-height: 0.95;
-        font-weight: 850;
-        color: var(--text);
-        margin: 0;
+        font-size:clamp(2.2rem,5vw,4.8rem);
+        line-height:.95;
+        font-weight:850;
+        color:var(--text);
+        margin:0;
     }
 
     .hero-subtitle {
-        max-width: 820px;
-        color: var(--muted);
-        font-size: 1rem;
-        line-height: 1.55;
-        margin-top: 14px;
+        max-width:820px;
+        color:var(--muted);
+        font-size:1rem;
+        line-height:1.55;
+        margin-top:14px;
     }
 
-    .element-container,
-    [data-testid="column"],
-    .stColumn {
-        overflow: visible !important;
+    .element-container,[data-testid="column"],.stColumn {
+        overflow:visible!important;
     }
 
     .fin-card {
-        position: relative;
-        overflow: visible;
+        position:relative;
+        overflow:visible;
         background:
-            linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.018)),
-            rgba(13,17,19,0.92);
-        border: 1px solid var(--line);
-        padding: 18px;
-        margin-bottom: 16px;
-        border-radius: 18px;
-        box-shadow: 0 18px 46px rgba(0,0,0,0.24);
-        min-height: 112px;
-        cursor: default;
+            linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.018)),
+            rgba(13,17,19,.92);
+        border:1px solid var(--line);
+        padding:18px;
+        margin-bottom:16px;
+        border-radius:18px;
+        box-shadow:0 18px 46px rgba(0,0,0,.24);
+        min-height:112px;
+        cursor:default;
     }
 
     .fin-card:hover {
-        border-color: rgba(47,128,255,0.48);
+        border-color:rgba(47,128,255,.48);
         background:
-            linear-gradient(180deg, rgba(47,128,255,0.11), rgba(255,255,255,0.018)),
-            rgba(13,17,19,0.96);
+            linear-gradient(180deg,rgba(47,128,255,.11),rgba(255,255,255,.018)),
+            rgba(13,17,19,.96);
     }
 
     .fin-card[data-tooltip]:hover::after {
-        content: attr(data-tooltip);
-        position: absolute;
-        z-index: 999999;
-        left: 14px;
-        top: calc(100% + 10px);
-        width: min(440px, 82vw);
-        padding: 13px 14px;
-        border-radius: 14px;
-        background: rgba(3,7,12,0.98);
-        border: 1px solid rgba(47,128,255,0.52);
-        box-shadow: 0 20px 55px rgba(0,0,0,0.55);
-        color: #f5f7f2;
-        font-size: 0.82rem;
-        line-height: 1.45;
-        font-weight: 650;
-        white-space: normal;
-        pointer-events: none;
+        content:attr(data-tooltip);
+        position:absolute;
+        z-index:999999;
+        left:14px;
+        top:calc(100% + 10px);
+        width:min(440px,82vw);
+        padding:13px 14px;
+        border-radius:14px;
+        background:rgba(3,7,12,.98);
+        border:1px solid rgba(47,128,255,.52);
+        box-shadow:0 20px 55px rgba(0,0,0,.55);
+        color:#f5f7f2;
+        font-size:.82rem;
+        line-height:1.45;
+        font-weight:650;
+        white-space:normal;
+        pointer-events:none;
     }
 
     .fin-card.metric-positive {
-        border-color: rgba(83,255,154,0.42);
+        border-color:rgba(83,255,154,.42);
         background:
-            linear-gradient(180deg, rgba(83,255,154,0.08), rgba(255,255,255,0.018)),
-            rgba(13,17,19,0.94);
+            linear-gradient(180deg,rgba(83,255,154,.08),rgba(255,255,255,.018)),
+            rgba(13,17,19,.94);
     }
 
     .fin-card.metric-negative {
-        border-color: rgba(255,87,87,0.42);
+        border-color:rgba(255,87,87,.42);
         background:
-            linear-gradient(180deg, rgba(255,87,87,0.08), rgba(255,255,255,0.018)),
-            rgba(13,17,19,0.94);
+            linear-gradient(180deg,rgba(255,87,87,.08),rgba(255,255,255,.018)),
+            rgba(13,17,19,.94);
     }
 
     .fin-title {
-        color: var(--muted);
-        font-size: 0.72rem;
-        font-weight: 800;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        margin-bottom: 12px;
+        color:var(--muted);
+        font-size:.72rem;
+        font-weight:800;
+        letter-spacing:.08em;
+        text-transform:uppercase;
+        margin-bottom:12px;
     }
 
     .fin-val {
-        color: var(--text);
-        font-size: 1.45rem;
-        font-weight: 850;
-        line-height: 1.15;
+        color:var(--text);
+        font-size:1.45rem;
+        font-weight:850;
+        line-height:1.15;
     }
 
-    .fin-val.metric-positive {
-        color: var(--green);
-    }
-
-    .fin-val.metric-negative {
-        color: var(--red);
-    }
+    .fin-val.metric-positive { color:var(--green); }
+    .fin-val.metric-negative { color:var(--red); }
 
     .fin-na {
-        color: #5f6869;
-        font-size: 1.2rem;
+        color:#5f6869;
+        font-size:1.2rem;
     }
 
     .fin-cash {
-        color: var(--green);
-        font-size: 1.05rem;
-        font-weight: 900;
+        color:var(--green);
+        font-size:1.05rem;
+        font-weight:900;
     }
 
     .score-container {
-        position: relative;
-        overflow: hidden;
-        text-align: left;
-        padding: 24px;
+        position:relative;
+        overflow:hidden;
+        text-align:left;
+        padding:24px;
         background:
-            radial-gradient(circle at 80% 20%, rgba(47,128,255,0.32), transparent 34%),
-            linear-gradient(145deg, #17294a, #07142a 72%);
-        border: 1px solid rgba(47,128,255,0.42);
-        border-radius: 24px;
-        min-height: 240px;
-        box-shadow: 0 28px 70px rgba(0,0,0,0.34);
+            radial-gradient(circle at 80% 20%,rgba(47,128,255,.32),transparent 34%),
+            linear-gradient(145deg,#17294a,#07142a 72%);
+        border:1px solid rgba(47,128,255,.42);
+        border-radius:24px;
+        min-height:240px;
+        box-shadow:0 28px 70px rgba(0,0,0,.34);
     }
 
-    .score-container.metric-positive {
-        border-color: rgba(83,255,154,0.42);
-    }
-
-    .score-container.metric-negative {
-        border-color: rgba(255,87,87,0.42);
-    }
+    .score-container.metric-positive { border-color:rgba(83,255,154,.42); }
+    .score-container.metric-negative { border-color:rgba(255,87,87,.42); }
 
     .score-title {
-        color: rgba(245,247,242,0.72);
-        font-size: 0.75rem;
-        font-weight: 900;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
+        color:rgba(245,247,242,.72);
+        font-size:.75rem;
+        font-weight:900;
+        text-transform:uppercase;
+        letter-spacing:.08em;
     }
 
     .score-val {
-        color: var(--text);
-        font-size: 5.4rem;
-        line-height: 0.95;
-        font-weight: 900;
-        margin-top: 22px;
+        color:var(--text);
+        font-size:5.4rem;
+        line-height:.95;
+        font-weight:900;
+        margin-top:22px;
     }
 
-    .score-val.metric-positive {
-        color: var(--green);
-    }
-
-    .score-val.metric-negative {
-        color: var(--red);
-    }
+    .score-val.metric-positive { color:var(--green); }
+    .score-val.metric-negative { color:var(--red); }
 
     .score-caption {
-        color: rgba(245,247,242,0.72);
-        font-size: 0.86rem;
-        margin-top: 12px;
+        color:rgba(245,247,242,.72);
+        font-size:.86rem;
+        margin-top:12px;
     }
 
     .metric-help-grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin: 8px 0 18px 0;
-        overflow: visible;
+        display:flex;
+        flex-wrap:wrap;
+        gap:10px;
+        margin:8px 0 18px 0;
+        overflow:visible;
     }
 
     .metric-help {
-        position: relative;
-        display: inline-flex;
-        align-items: center;
-        padding: 8px 12px;
-        border-radius: 999px;
-        background: rgba(47,128,255,0.14);
-        border: 1px solid rgba(47,128,255,0.38);
-        color: #f5f7f2;
-        font-size: 0.8rem;
-        font-weight: 850;
-        cursor: default;
+        position:relative;
+        display:inline-flex;
+        align-items:center;
+        padding:8px 12px;
+        border-radius:999px;
+        background:rgba(47,128,255,.14);
+        border:1px solid rgba(47,128,255,.38);
+        color:#f5f7f2;
+        font-size:.8rem;
+        font-weight:850;
+        cursor:default;
     }
 
     .metric-help[data-tooltip]:hover::after {
-        content: attr(data-tooltip);
-        position: absolute;
-        z-index: 999999;
-        left: 0;
-        top: calc(100% + 10px);
-        width: min(440px, 82vw);
-        padding: 13px 14px;
-        border-radius: 14px;
-        background: rgba(3,7,12,0.98);
-        border: 1px solid rgba(47,128,255,0.52);
-        box-shadow: 0 20px 55px rgba(0,0,0,0.55);
-        color: #f5f7f2;
-        font-size: 0.82rem;
-        line-height: 1.45;
-        font-weight: 650;
-        white-space: normal;
+        content:attr(data-tooltip);
+        position:absolute;
+        z-index:999999;
+        left:0;
+        top:calc(100% + 10px);
+        width:min(440px,82vw);
+        padding:13px 14px;
+        border-radius:14px;
+        background:rgba(3,7,12,.98);
+        border:1px solid rgba(47,128,255,.52);
+        box-shadow:0 20px 55px rgba(0,0,0,.55);
+        color:#f5f7f2;
+        font-size:.82rem;
+        line-height:1.45;
+        font-weight:650;
+        white-space:normal;
     }
 
     .expert-verdict {
-        border: 1px solid var(--line);
-        border-left: 6px solid #777;
-        border-radius: 18px;
-        padding: 20px;
-        background: rgba(13,17,19,0.88);
-        margin-bottom: 24px;
+        border:1px solid var(--line);
+        border-left:6px solid #777;
+        border-radius:18px;
+        padding:20px;
+        background:rgba(13,17,19,.88);
+        margin-bottom:24px;
     }
 
-    .buy-verdict { border-left-color: var(--green); }
-    .hold-verdict { border-left-color: var(--yellow); }
-    .sell-verdict { border-left-color: var(--red); }
+    .buy-verdict { border-left-color:var(--green); }
+    .hold-verdict { border-left-color:var(--yellow); }
+    .sell-verdict { border-left-color:var(--red); }
 
     .expert-verdict h4 {
-        margin: 0 0 8px 0;
-        color: var(--text) !important;
+        margin:0 0 8px 0;
+        color:var(--text)!important;
     }
 
     .expert-verdict p {
-        color: #b8c0c0;
-        line-height: 1.6;
-        font-size: 0.95rem;
-        margin: 0;
+        color:#b8c0c0;
+        line-height:1.6;
+        font-size:.95rem;
+        margin:0;
     }
 
     .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        border-bottom: 1px solid var(--line);
-        margin-bottom: 18px;
+        gap:8px;
+        border-bottom:1px solid var(--line);
+        margin-bottom:18px;
     }
 
     .stTabs [data-baseweb="tab"] {
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(255,255,255,0.08);
-        border-bottom: none;
-        border-radius: 16px 16px 0 0;
-        padding: 13px 20px;
-        color: var(--muted);
-        font-weight: 850;
+        background:rgba(255,255,255,.04);
+        border:1px solid rgba(255,255,255,.08);
+        border-bottom:none;
+        border-radius:16px 16px 0 0;
+        padding:13px 20px;
+        color:var(--muted);
+        font-weight:850;
     }
 
     .stTabs [aria-selected="true"] {
-        background: var(--accent-soft);
-        color: var(--text);
-        border-color: rgba(47,128,255,0.52);
+        background:var(--accent-soft);
+        color:var(--text);
+        border-color:rgba(47,128,255,.52);
     }
 
     .stRadio [role="radiogroup"] {
-        background: rgba(13,17,19,0.78);
-        border: 1px solid var(--line);
-        border-radius: 18px;
-        padding: 8px;
-        gap: 8px;
+        background:rgba(13,17,19,.78);
+        border:1px solid var(--line);
+        border-radius:18px;
+        padding:8px;
+        gap:8px;
     }
 
     .stTextInput input,
     .stTextArea textarea,
     .stNumberInput input,
     .stSelectbox div[data-baseweb="select"] > div {
-        background: rgba(13,17,19,0.96) !important;
-        color: var(--text) !important;
-        border: 1px solid rgba(255,255,255,0.12) !important;
-        border-radius: 16px !important;
-        min-height: 48px;
+        background:rgba(13,17,19,.96)!important;
+        color:var(--text)!important;
+        border:1px solid rgba(255,255,255,.12)!important;
+        border-radius:16px!important;
+        min-height:48px;
     }
 
     .stTextInput input:focus,
     .stTextArea textarea:focus {
-        border-color: rgba(47,128,255,0.75) !important;
-        box-shadow: 0 0 0 3px rgba(47,128,255,0.18) !important;
+        border-color:rgba(47,128,255,.75)!important;
+        box-shadow:0 0 0 3px rgba(47,128,255,.18)!important;
     }
 
     .stButton button,
     .stDownloadButton button {
-        background: var(--accent);
-        color: #f5f7f2;
-        border: 0;
-        border-radius: 999px;
-        padding: 0.75rem 1.25rem;
-        font-weight: 950;
-        letter-spacing: 0.02em;
-        text-transform: uppercase;
-        box-shadow: 0 12px 30px rgba(47,128,255,0.28);
+        background:var(--accent);
+        color:#f5f7f2;
+        border:0;
+        border-radius:999px;
+        padding:.75rem 1.25rem;
+        font-weight:950;
+        letter-spacing:.02em;
+        text-transform:uppercase;
+        box-shadow:0 12px 30px rgba(47,128,255,.28);
     }
 
     .stButton button:hover,
     .stDownloadButton button:hover {
-        background: #5b9dff;
-        color: #ffffff;
+        background:#5b9dff;
+        color:#fff;
     }
 
     .stDataFrame {
-        border: 1px solid var(--line);
-        border-radius: 18px;
-        overflow: hidden;
-        background: rgba(13,17,19,0.9);
+        border:1px solid var(--line);
+        border-radius:18px;
+        overflow:hidden;
+        background:rgba(13,17,19,.9);
     }
 
     hr {
-        border: none;
-        border-top: 1px solid var(--line);
-        margin: 30px 0;
+        border:none;
+        border-top:1px solid var(--line);
+        margin:30px 0;
     }
 
-    @media (max-width: 768px) {
-        .block-container {
-            padding-top: 5.8rem !important;
-        }
-
-        .terminal-shell {
-            padding: 18px;
-            border-radius: 18px;
-        }
-
-        .hero-title {
-            font-size: 2.45rem;
-        }
-
-        .score-val {
-            font-size: 4rem;
-        }
+    @media(max-width:768px) {
+        .block-container { padding-top:5.8rem!important; }
+        .terminal-shell { padding:18px; border-radius:18px; }
+        .hero-title { font-size:2.45rem; }
+        .score-val { font-size:4rem; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -682,6 +647,23 @@ def safe_float(val, multiplier=1.0, precision=2):
         if pd.isna(val):
             return None
         return round(float(val) * multiplier, precision)
+    except Exception:
+        return None
+
+
+def safe_percent(val, precision=2):
+    if val is None or val == "":
+        return None
+    try:
+        if pd.isna(val):
+            return None
+
+        number = float(val)
+
+        if abs(number) <= 1:
+            number *= 100
+
+        return round(number, precision)
     except Exception:
         return None
 
@@ -1131,11 +1113,11 @@ def extract_stock_data(info, fx_rate, ticker_symbol=None):
     else:
         d["Graham"] = None
 
-    d["Marge_Brute"] = safe_float(info.get("grossMargins"), 100)
-    d["Marge_Op"] = safe_float(info.get("operatingMargins"), 100)
-    d["Marge_Nette"] = safe_float(info.get("profitMargins"), 100)
-    d["ROE"] = safe_float(info.get("returnOnEquity"), 100)
-    d["ROA"] = safe_float(info.get("returnOnAssets"), 100)
+    d["Marge_Brute"] = safe_percent(info.get("grossMargins"))
+    d["Marge_Op"] = safe_percent(info.get("operatingMargins"))
+    d["Marge_Nette"] = safe_percent(info.get("profitMargins"))
+    d["ROE"] = safe_percent(info.get("returnOnEquity"))
+    d["ROA"] = safe_percent(info.get("returnOnAssets"))
 
     treso = safe_float(info.get("totalCash"), fx_rate / 1_000_000)
     dette_totale = safe_float(info.get("totalDebt"), fx_rate / 1_000_000)
@@ -1152,17 +1134,17 @@ def extract_stock_data(info, fx_rate, ticker_symbol=None):
     d["Current_Ratio"] = safe_float(info.get("currentRatio"))
     d["Quick_Ratio"] = safe_float(info.get("quickRatio"))
     d["Debt_Equity"] = safe_float(info.get("debtToEquity"))
-    d["Rev_Growth"] = safe_float(info.get("revenueGrowth"), 100)
-    d["Earnings_Growth"] = safe_float(info.get("earningsGrowth"), 100)
-    d["Payout"] = safe_float(info.get("payoutRatio"), 100)
-    d["Dividend_Yield"] = safe_float(info.get("dividendYield"), 100)
+    d["Rev_Growth"] = safe_percent(info.get("revenueGrowth"))
+    d["Earnings_Growth"] = safe_percent(info.get("earningsGrowth"))
+    d["Payout"] = safe_percent(info.get("payoutRatio"))
+    d["Dividend_Yield"] = safe_percent(info.get("dividendYield"))
     d["Dividend_Rate"] = safe_float(info.get("dividendRate"), fx_rate)
     d["Target"] = safe_float(info.get("targetMeanPrice"), fx_rate)
     d["Analystes"] = info.get("numberOfAnalystOpinions", "N/A")
 
     d["Fifty_Day_Avg"] = safe_float(info.get("fiftyDayAverage"))
     d["Two_Hundred_Day_Avg"] = safe_float(info.get("twoHundredDayAverage"))
-    d["Perf_52w"] = safe_float(info.get("52WeekChange"), 100)
+    d["Perf_52w"] = safe_percent(info.get("52WeekChange"))
 
     reco_raw = info.get("recommendationKey", "N/A")
     d["Reco"] = reco_raw.replace("_", " ").upper() if isinstance(reco_raw, str) else "N/A"
@@ -1193,7 +1175,7 @@ def extract_etf_data(info, ticker_symbol, fx_rate):
     d = {}
 
     d["Prix"] = safe_float(info.get("navPrice") or info.get("previousClose") or info.get("regularMarketPrice"), fx_rate)
-    d["TER"] = safe_float(info.get("annualReportExpenseRatio"), 100)
+    d["TER"] = safe_percent(info.get("annualReportExpenseRatio"))
     d["AUM"] = safe_float(info.get("totalAssets"), fx_rate / 1_000_000)
 
     name = str(info.get("longName", "")).upper()
